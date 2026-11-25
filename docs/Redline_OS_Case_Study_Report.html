@@ -112,8 +112,10 @@
   .sec-num { color: var(--ink); font-weight: bold; margin-right: .3rem; }
 
   /* ── Tables (Colour preserved in tables) ── */
-  .tbl-wrap { overflow-x: auto; margin: 1rem 0 1.4rem; }
+  .tbl-wrap { overflow-x: auto; margin: .7rem 0 1rem; }
   table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; }
   thead th {
     background: var(--tbl-head);
     color: var(--ink);
@@ -206,15 +208,14 @@
   .badge-soft { background: #fff3e0; color: #7a4a00; border: 1px solid #f0d090; }
   .badge-nrt  { background: var(--tbl-head); color: var(--ink-muted); border: 1px solid #ccc; }
 
-  /* ── Declaration / Acknowledgement (Strictly Black & White) ── */
+  /* ── Declaration / Acknowledgement (Clean borderless text) ── */
   .decl-box {
     background: #ffffff;
-    border: 1px solid #444444;
-    border-radius: var(--radius);
-    padding: 1rem 1.4rem;
+    border: none;
+    padding: 0;
     font-size: 9.5pt;
     color: var(--ink-soft);
-    margin-bottom: 1.2rem;
+    margin-bottom: 1rem;
   }
 
   /* ── References ── */
@@ -314,6 +315,7 @@
 
 <!-- ══════════════════════ SEC 1: ABSTRACT ══════════════════════ -->
 
+<div class="page-break"></div>
 <h1><span class="sec-num">1.</span> Abstract</h1>
 <p>
 Hospital computing environments must simultaneously orchestrate time-critical emergency care (cardiac arrest,
@@ -389,7 +391,7 @@ clinical trust (20%), data freshness (15%), and incoming load (15%), and execute
 two-phase hold.
 </p>
 
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead>
     <tr>
@@ -431,7 +433,7 @@ two-phase hold.
 <!-- ══════════════════════ SEC 5: MAPPING ══════════════════════ -->
 <h1><span class="sec-num">5.</span> Real-World to OS Mapping &amp; System Diagrams</h1>
 
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead>
     <tr>
@@ -638,7 +640,7 @@ Tasks transition cleanly across five states so CPU dispatch never stalls while a
 </div>
 
 <h2>6.1 Real-Time Task Classification</h2>
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead>
     <tr>
@@ -675,7 +677,7 @@ Tasks transition cleanly across five states so CPU dispatch never stalls while a
 <p>In addition to the 8-process baseline (T1–T8) and 8 live seeded system requests (REQ-1001–REQ-1008),
 Redline includes a 10-process clinical mix covering all five subsystems:</p>
 
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead>
     <tr><th>PID</th><th>Hospital Activity</th><th>Subsystem</th><th>AT</th><th>Prio</th><th>BT</th><th>SLA DL</th><th>RT Class</th></tr>
@@ -704,7 +706,7 @@ where routine tasks arrive early (t=0–3) and critical emergencies arrive later
 used throughout: <strong>TAT = CT − AT</strong>, <strong>WT = TAT − BT</strong>, <strong>RT = First Dispatch − AT</strong>.
 </p>
 
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead>
     <tr><th>PID</th><th>Hospital Activity</th><th>AT</th><th>Priority</th><th>BT</th><th>SLA DL</th><th>Subsystem</th></tr>
@@ -847,7 +849,7 @@ used throughout: <strong>TAT = CT − AT</strong>, <strong>WT = TAT − BT</stro
 
 <!-- 7.1 FCFS -->
 <h2>7.1 First Come First Served (FCFS)</h2>
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead><tr><th>PID</th><th>AT</th><th>Prio</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr></thead>
   <tbody>
@@ -867,7 +869,7 @@ used throughout: <strong>TAT = CT − AT</strong>, <strong>WT = TAT − BT</stro
 
 <!-- 7.2 SJF -->
 <h2>7.2 Shortest Job First (SJF — Non-Preemptive) &amp; SRTF</h2>
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead><tr><th>PID</th><th>AT</th><th>Prio</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr></thead>
   <tbody>
@@ -888,7 +890,7 @@ used throughout: <strong>TAT = CT − AT</strong>, <strong>WT = TAT − BT</stro
 <!-- 7.3 Preemptive Priority -->
 
 <h2>7.3 Preemptive Priority Scheduling <em>(Recommended Core Policy)</em></h2>
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead><tr><th>PID</th><th>AT</th><th>Prio</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr></thead>
   <tbody>
@@ -908,7 +910,7 @@ used throughout: <strong>TAT = CT − AT</strong>, <strong>WT = TAT − BT</stro
 
 <!-- 7.4 Round Robin -->
 <h2>7.4 Round Robin Scheduling (Time Quantum Q = 3)</h2>
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead><tr><th>PID</th><th>AT</th><th>Prio</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr></thead>
   <tbody>
@@ -928,7 +930,7 @@ used throughout: <strong>TAT = CT − AT</strong>, <strong>WT = TAT − BT</stro
 
 <!-- 7.5 EDF -->
 <h2>7.5 Earliest Deadline First (EDF — Real-Time Dynamic Priority)</h2>
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead><tr><th>PID</th><th>AT</th><th>Prio</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr></thead>
   <tbody>
@@ -948,7 +950,7 @@ used throughout: <strong>TAT = CT − AT</strong>, <strong>WT = TAT − BT</stro
 
 <!-- 7.6 Comparison -->
 <h2>7.6 Eight-Algorithm Criteria Comparison &amp; Quantum Sensitivity</h2>
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead>
     <tr><th>Algorithm</th><th>Avg WT</th><th>Avg TAT</th><th>Avg RT</th><th>Crit WT</th><th>Crit RT</th><th>Switches</th><th>CPU %</th><th>Thru</th></tr>
@@ -982,7 +984,7 @@ real-time hazards: indefinite starvation of routine tasks (such as OP discharges
 and priority inversion when a low-priority task holds a shared availability lock.
 </p>
 
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead>
     <tr><th>Phenomenon</th><th>Experimental Setup</th><th>Without Mitigation</th><th>With Redline Mitigation</th></tr>
@@ -1110,7 +1112,7 @@ Redline layers three defences:
   <li><strong>Banker's Algorithm Safe-State Verification</strong> — demonstrated on Hospital B: Total=[3,2,1], Available=[1,1,0].</li>
 </ul>
 
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead>
     <tr><th>Hospital B Request</th><th>Allocation [ICU, Vent, Spec]</th><th>Max Need</th><th>Remaining Need</th><th>Banker's Safe-State Decision</th></tr>
@@ -1143,7 +1145,7 @@ to <strong>Surge FIFO + Capacity Load Balancing</strong> (suspending P1 aging an
 mass-casualty surges.
 </p>
 
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead>
     <tr><th>Expected OS Behaviour Question</th><th>Verified Kernel Response in Redline</th></tr>
@@ -1181,7 +1183,7 @@ Liquid Glass UI, EN/HI/KN i18n, RBAC switcher), including an interactive Live Ke
 Process Builder, SVG Gantt &amp; Quantum Sensitivity Lab, and CSV Report Export.
 </p>
 
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table>
   <thead>
     <tr><th>Case</th><th>Hospital Scenario</th><th>Best Algorithm</th><th>Measured Result</th><th>Engineering Rationale</th></tr>
@@ -1227,7 +1229,7 @@ Process Builder, SVG Gantt &amp; Quantum Sensitivity Lab, and CSV Report Export.
 </div>
 
 <h2>Pytest Verification Summary (19/19 Passed)</h2>
-<div class="tbl-wrap no-break">
+<div class="tbl-wrap">
 <table class="test-row">
   <thead>
     <tr><th>Test Suite ID</th><th>Automated Pytest Verification Scope</th><th>Status</th></tr>
