@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REDLINE (HEMS-Link) — OS Case Study 2 Report</title>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:        #111111;
+    --ink-soft:   #1f1f1f;
+    --ink-muted:  #444444;
+    --rule:       #222222;
+    --rule-light: #cccccc;
+    --tbl-head:   #f0f0f0;
+    --tbl-stripe: #f8f8f8;
+    --tbl-border: #b8b8b8;
+    --accent:     #111111;
+    --accent-soft:#ffffff;
+    --warn:       #8b3a3a;
+    --warn-soft:  #ffffff;
+    --tag-bg:     #f3f3f3;
+    --page-w:     780px;
+    --gap:        1.6rem;
+    --radius:     4px;
+  }
+
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 10.5pt;
+    line-height: 1.65;
+    color: var(--ink);
+    background: #fff;
+    max-width: var(--page-w);
+    margin: 0 auto;
+    padding: 2rem 2.4rem 4rem;
+  }
+
+  /* ── Page dividers for print ── */
+  @page {
+    size: A4;
+    margin: 15mm 16mm;
+  }
+  @media print {
+    body { padding: 0; max-width: 100%; font-size: 9.5pt; }
+    .page-break { page-break-before: always; }
+    .no-break { page-break-inside: avoid; }
+    a { color: inherit; text-decoration: none; }
+  }
+
+  /* ── Cover page ── */
+  .cover {
+    min-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border-bottom: 1.5px solid var(--ink);
+    padding-bottom: 2.5rem;
+  }
+  .cover-uni { font-size: 11.5pt; letter-spacing: .06em; color: var(--ink); font-weight: bold; margin-bottom: .3rem; }
+  .cover-dept { font-size: 9.5pt; color: var(--ink-muted); margin-bottom: 2.2rem; }
+  .cover-rule { width: 60px; height: 2px; background: var(--ink); margin: 0 auto 1.8rem; }
+  .cover-course { font-size: 8.5pt; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: .7rem; }
+  .cover-title { font-size: 22pt; font-weight: bold; color: var(--ink); line-height: 1.25; margin-bottom: .5rem; }
+  .cover-subtitle { font-size: 11pt; color: var(--ink-soft); margin-bottom: 2.2rem; font-style: italic; }
+  .cover-desc { font-size: 9pt; color: var(--ink-muted); max-width: 560px; line-height: 1.6; margin-bottom: 2.2rem; }
+
+  .cover-meta { width: 100%; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 1.4rem 0; }
+  .cover-row { display: grid; grid-template-columns: 160px 1fr; gap: .3rem 1rem; text-align: left; max-width: 480px; margin: 0 auto; }
+  .cover-label { font-size: 8pt; color: var(--ink-muted); letter-spacing: .04em; padding-top: .15rem; }
+  .cover-value { font-size: 9pt; color: var(--ink); }
+  .cover-members { margin-top: 1.2rem; }
+  .cover-members-label { font-size: 8pt; color: var(--ink-muted); letter-spacing: .04em; margin-bottom: .4rem; }
+  .member-list { font-size: 9pt; color: var(--ink); line-height: 1.8; }
+
+  .notice-box {
+    margin-top: 2rem;
+    background: #ffffff;
+    border: 1px solid #333333;
+    border-left: 3px solid #111111;
+    padding: .7rem 1rem;
+    font-size: 8.5pt;
+    color: var(--ink-soft);
+    max-width: 540px;
+    text-align: left;
+  }
+
+  /* ── TOC ── */
+  .toc { margin: 2rem 0; }
+  .toc-title { font-size: 12pt; font-weight: bold; color: var(--ink); margin-bottom: 1rem; border-bottom: 1px solid var(--rule); padding-bottom: .4rem; }
+  .toc-row { display: grid; grid-template-columns: 1fr auto; gap: .2rem 1rem; padding: .25rem 0; border-bottom: 1px dotted var(--rule-light); font-size: 9.5pt; }
+  .toc-row.sub { padding-left: 1.4rem; color: var(--ink-soft); font-size: 9pt; }
+  .toc-page { color: var(--ink-muted); min-width: 2rem; text-align: right; }
+
+  /* ── Typography ── */
+  h1, h2, h3, h4 { font-weight: bold; color: var(--ink); margin-top: var(--gap); margin-bottom: .6rem; line-height: 1.3; }
+  h1 { font-size: 13.5pt; border-bottom: 1.5px solid var(--ink); padding-bottom: .3rem; }
+  h2 { font-size: 11.5pt; border-bottom: 1px solid var(--rule-light); padding-bottom: .25rem; }
+  h3 { font-size: 10.5pt; color: var(--ink-soft); font-style: italic; }
+  h4 { font-size: 10pt; color: var(--ink); font-weight: bold; font-style: normal; }
+
+  p { margin-bottom: .75rem; color: var(--ink-soft); }
+  strong { color: var(--ink); font-weight: bold; }
+  em { color: var(--ink-soft); }
+
+  /* ── Section numbers ── */
+  .sec-num { color: var(--ink); font-weight: bold; margin-right: .3rem; }
+
+  /* ── Tables (Colour preserved in tables) ── */
+  .tbl-wrap { overflow-x: auto; margin: 1rem 0 1.4rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  thead th {
+    background: var(--tbl-head);
+    color: var(--ink);
+    font-weight: bold;
+    padding: .55rem .7rem;
+    border: 1px solid var(--tbl-border);
+    text-align: left;
+    letter-spacing: .01em;
+  }
+  tbody td {
+    padding: .45rem .7rem;
+    border: 1px solid var(--tbl-border);
+    color: var(--ink-soft);
+    vertical-align: top;
+  }
+  tbody tr:nth-child(even) td { background: var(--tbl-stripe); }
+  .col-mono { font-family: 'Courier New', monospace; font-size: 8.5pt; }
+  .col-crit { color: var(--warn); font-weight: bold; }
+  .col-good { color: #2a6632; font-weight: bold; }
+
+  /* ── Callout boxes (Strictly Black & White) ── */
+  .obs-box {
+    background: #ffffff;
+    border: 1px solid #cccccc;
+    border-left: 3px solid #111111;
+    padding: .65rem 1rem;
+    margin: .8rem 0 1.2rem;
+    font-size: 9pt;
+    color: var(--ink-soft);
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+  .obs-box strong { color: var(--ink); }
+  .warn-box {
+    background: #ffffff;
+    border: 1px solid #333333;
+    border-left: 3px solid #111111;
+    padding: .65rem 1rem;
+    margin: .8rem 0 1.2rem;
+    font-size: 9pt;
+    color: var(--ink-soft);
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  /* ── Figures & captions ── */
+  .fig-wrap { margin: 1.2rem 0; text-align: center; }
+  .fig-caption { font-size: 8.5pt; color: var(--ink-muted); margin-top: .5rem; font-style: italic; }
+
+  /* ── Diagram: Architecture (Colour preserved as diagram) ── */
+  .arch-diagram { border: 1px solid #bbb; border-radius: var(--radius); overflow: hidden; font-size: 8.5pt; margin: 1rem 0; }
+  .arch-layer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: .9rem 1.4rem;
+    border-bottom: 1px solid #ccc;
+    gap: .25rem;
+  }
+  .arch-layer:last-child { border-bottom: none; }
+  .arch-layer-title { font-weight: bold; font-size: 9pt; color: #2c4a7c; letter-spacing: .04em; }
+  .arch-layer-detail { color: #555; font-size: 8pt; text-align: center; }
+  .arch-layer.l1 { background: #edf1f8; }
+  .arch-layer.l2 { background: #f3f5f9; }
+  .arch-layer.l3 { background: #f7f8fa; }
+  .arch-layer.l4 { background: #fafafa; }
+  .arch-arrow { text-align: center; font-size: 10pt; color: #666; padding: .1rem 0; line-height: 1; }
+
+  /* ── Gantt chart ── */
+  .gantt-wrap { overflow-x: auto; margin: 1rem 0; }
+  .gantt-svg { display: block; width: 100%; min-width: 640px; }
+
+  /* ── 5-State lifecycle (Colour preserved as diagram) ── */
+  .lifecycle { display: flex; align-items: center; justify-content: center; gap: .5rem; flex-wrap: wrap; margin: 1rem 0; font-size: 8.5pt; }
+  .state-box {
+    border: 1.5px solid var(--tbl-border);
+    border-radius: 4px;
+    padding: .4rem .8rem;
+    background: var(--tbl-head);
+    color: var(--ink);
+    font-weight: bold;
+    min-width: 70px;
+    text-align: center;
+  }
+  .state-box.active { background: #2c4a7c; color: #fff; border-color: #2c4a7c; }
+  .state-arrow { color: var(--ink-muted); font-size: 11pt; }
+
+  /* ── Status badges (inside tables) ── */
+  .badge { display: inline-block; font-size: 7.5pt; font-weight: bold; padding: .15rem .5rem; border-radius: 3px; letter-spacing: .04em; }
+  .badge-pass { background: #e6f4ea; color: #2a6632; border: 1px solid #a8d5b0; }
+  .badge-hard { background: #fce8e8; color: #8b3a3a; border: 1px solid #f0b8b8; }
+  .badge-soft { background: #fff3e0; color: #7a4a00; border: 1px solid #f0d090; }
+  .badge-nrt  { background: var(--tbl-head); color: var(--ink-muted); border: 1px solid #ccc; }
+
+  /* ── Declaration / Acknowledgement (Strictly Black & White) ── */
+  .decl-box {
+    background: #ffffff;
+    border: 1px solid #444444;
+    border-radius: var(--radius);
+    padding: 1rem 1.4rem;
+    font-size: 9.5pt;
+    color: var(--ink-soft);
+    margin-bottom: 1.2rem;
+  }
+
+  /* ── References ── */
+  .ref-list { font-size: 9pt; color: var(--ink-soft); padding-left: 1.4rem; }
+  .ref-list li { margin-bottom: .5rem; }
+
+  /* ── Page footer ── */
+  .page-footer { text-align: center; font-size: 8pt; color: var(--ink-muted); margin-top: 2.5rem; padding-top: .6rem; border-top: 1px solid var(--rule-light); }
+
+  /* ── Misc ── */
+  .small { font-size: 8.5pt; color: var(--ink-muted); }
+  .text-center { text-align: center; }
+  .mt1 { margin-top: 1rem; }
+  .mb0 { margin-bottom: 0; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════ COVER ══════════════════════ -->
+<div class="cover">
+  <div class="cover-uni">JAIN (DEEMED-TO-BE) UNIVERSITY</div>
+  <div class="cover-dept">Department of Computer Science &amp; Engineering (AI)</div>
+  <div class="cover-rule"></div>
+  <div class="cover-course">Operating Systems · Case Study 2 Report</div>
+  <div class="cover-title">REDLINE (HEMS-Link)</div>
+  <div class="cover-subtitle">Hospital Emergency Management &amp; Multi-Hospital Coordination System</div>
+  <div class="cover-desc">
+    An Operating Systems analysis of CPU scheduling, real-time deadlines, shared-resource
+    synchronisation, inter-process communication, and deadlock handling.
+  </div>
+
+  <div class="cover-meta">
+    <div class="cover-row">
+      <span class="cover-label">Course &amp; Code</span>
+      <span class="cover-value">Operating Systems — 25PCCS201</span>
+      <span class="cover-label">Class &amp; Section</span>
+      <span class="cover-value">III Semester — CSE (AI)</span>
+      <span class="cover-label">Faculty</span>
+      <span class="cover-value">Gowri Shankar</span>
+      <span class="cover-label">Submission</span>
+      <span class="cover-value">26 November 2026</span>
+    </div>
+
+    <div class="cover-members" style="margin-top:1rem;">
+      <div class="cover-members-label">GROUP MEMBERS</div>
+      <div class="member-list">
+        A B Shree Vaibhavi (25BTRCA001) &nbsp;·&nbsp; Alona Prasad (25BTRCA008)<br>
+        Printa Nath (25BTRCA044) &nbsp;·&nbsp; Punya Shree S (25BTRCA045)<br>
+        R Hari Priya (25BTRCA046) &nbsp;·&nbsp; Rithika Vijay (25BTRCA048) &nbsp;·&nbsp; Vinay (25BTRCA057)
+      </div>
+    </div>
+  </div>
+
+  <div class="notice-box">
+    <strong>System Scope &amp; Simulation Notice.</strong> All hospital bed capacities, patient hashes, and
+    ambulance ETAs in this report are simulated for Operating Systems coursework evaluation.
+    Redline is an academic prototype that supports dispatch staff and does not replace clinical judgement.
+  </div>
+</div>
+
+<!-- ══════════════════════ PAGE 2 ══════════════════════ -->
+<div class="page-break"></div>
+
+<div class="decl-box mt1">
+  <strong>Declaration.</strong> We hereby declare that this case study report titled <em>Redline (HEMS-Link):
+  Hospital Emergency Management &amp; Multi-Hospital Coordination System</em> has been prepared as part of
+  the Operating Systems coursework (25PCCS201, III Semester, CSE-AI) at Jain (Deemed-to-be) University.
+  All scheduling calculations, concurrency experiments, real-time analyses, and automated verification
+  results were independently derived and validated on our prototype.
+</div>
+
+<div class="decl-box">
+  <strong>Acknowledgement.</strong> We express our sincere gratitude to Prof. Gowri Shankar and the
+  Department of Computer Science &amp; Engineering (AI) for guiding us to analyse real-world hospital
+  operations through core Operating Systems abstractions — CPU scheduling, real-time deadlines,
+  synchronisation primitives, inter-process communication, and deadlock management.
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <div class="toc-title">Table of Contents</div>
+  <div class="toc-row"><span>1 · Abstract</span><span class="toc-page">3</span></div>
+  <div class="toc-row"><span>2 · Introduction &amp; Problem Statement</span><span class="toc-page">3</span></div>
+  <div class="toc-row"><span>3 · Objectives, Scope &amp; Explicit Assumptions</span><span class="toc-page">3–4</span></div>
+  <div class="toc-row"><span>4 · System Description (10-Hospital Network)</span><span class="toc-page">4</span></div>
+  <div class="toc-row"><span>5 · Real-World to OS Mapping, Architecture &amp; Dispatch Flowchart</span><span class="toc-page">5–6</span></div>
+  <div class="toc-row"><span>6 · OS Concepts, 5-State Lifecycle &amp; Real-Time Classification</span><span class="toc-page">7</span></div>
+  <div class="toc-row"><span>7 · CPU Scheduling Analysis, Calculations, Gantt Charts &amp; Quantum Sweep</span><span class="toc-page">8–11</span></div>
+  <div class="toc-row"><span>8 · Impact of Continuous Emergencies: Starvation, Aging &amp; Priority Inheritance</span><span class="toc-page">12</span></div>
+  <div class="toc-row"><span>9 · Synchronisation, Two-Phase Holds &amp; Deadlock Handling</span><span class="toc-page">12–13</span></div>
+  <div class="toc-row"><span>10 · Proposed Hybrid Policy &amp; Expected OS Behaviour</span><span class="toc-page">13</span></div>
+  <div class="toc-row"><span>11 · Prototype Evidence, 5 Test Cases &amp; Pytest Verification (19/19)</span><span class="toc-page">14</span></div>
+  <div class="toc-row"><span>12 · Recommended Additional Features</span><span class="toc-page">15</span></div>
+  <div class="toc-row"><span>13 · Conclusion</span><span class="toc-page">15</span></div>
+  <div class="toc-row"><span>14 · References</span><span class="toc-page">15</span></div>
+</div>
+
+<!-- ══════════════════════ SEC 1: ABSTRACT ══════════════════════ -->
+<div class="page-break"></div>
+<h1><span class="sec-num">1.</span> Abstract</h1>
+<p>
+Hospital computing environments must simultaneously orchestrate time-critical emergency care (cardiac arrest,
+multi-organ trauma, stroke), continuous ICU ventilator telemetry, stat diagnostic lab panels, outpatient queues,
+pharmacy dispatches, and inter-hospital patient transfers. When an origin facility reaches capacity, manual
+phone coordination wastes golden minutes, exposes stale bed counts, and risks double-booking the last
+available ICU bed.
+</p>
+<p>
+Redline (HEMS-Link) models a ten-hospital emergency coordination network centred on Jain University
+Health Centre (Kanakapura Road, South Bengaluru) as a deterministic Operating System kernel. Every
+clinical activity executes as a five-state Process Control Block (PCB); ICU beds and ventilators act as
+counting semaphores; concurrent reservations run inside a mutex-protected critical section with two-phase
+holds and optimistic version tokens; and hospital responses flow via asynchronous IPC queues.
+</p>
+<p>
+Eight scheduling policies — FCFS, SJF, SRTF, Non-Preemptive Priority, Preemptive Priority, Round Robin
+(Q=3), Real-Time EDF, and MLFQ — were evaluated on the eight-process baseline (T1–T8) and a
+ten-process hospital clinical mix (H1–H10). While SJF achieves the lowest overall wait (11.0 ticks),
+Preemptive Priority delivers 0.00-tick critical response and is paired with priority aging (−1 every 10 ticks)
+to prevent starvation. In a 1,000-trial concurrency test, mutex protection reduces double-bookings from
+692/1,000 to 0/1,000.
+</p>
+
+<!-- ══════════════════════ SEC 2: INTRO ══════════════════════ -->
+<h1><span class="sec-num">2.</span> Introduction &amp; Problem Statement</h1>
+<p>
+A modern hospital computer system is an archetypal concurrent, resource-constrained environment. Emergency
+admissions arrive unpredictably — like hardware interrupts — while routine outpatient registrations, laboratory
+batches, pharmacy refills, and planned step-down transfers compete for the same CPU scheduler and clinical
+staff attention. Extending coordination across multiple hospitals introduces distributed-systems hazards:
+availability figures age quickly, two referring hospitals can view the same free ventilator simultaneously,
+and a patient holding an ICU bed while waiting for a ventilator can trigger a circular wait.
+</p>
+<div class="warn-box">
+  <strong>Problem Statement.</strong> Design and analyse an Operating Systems-driven hospital emergency
+  management and coordination architecture that efficiently schedules emergency patients, ICU monitoring,
+  laboratory tests, OP queues, pharmacy requests, and inter-hospital transfers — ensuring hard real-time
+  responsiveness for critical emergencies without starvation, race conditions, stale-data dispatch, or
+  multi-resource deadlocks.
+</div>
+
+<!-- ══════════════════════ SEC 3: OBJECTIVES ══════════════════════ -->
+<h1><span class="sec-num">3.</span> Objectives, Scope &amp; Explicit Assumptions</h1>
+<h2>3.1 Case Study Objectives</h2>
+<p>This study was undertaken with the following concrete goals:</p>
+<ul style="padding-left:1.4rem;color:var(--ink-soft);font-size:9.5pt;line-height:1.9;">
+  <li>Model diverse hospital activities as OS processes with defined arrival times, priorities, burst times, and SLA deadlines.</li>
+  <li>Apply and compare FCFS, SJF, Preemptive Priority, and Round Robin (Q=3), alongside SRTF, Non-Preemptive Priority, Real-Time EDF, and MLFQ.</li>
+  <li>Compute Completion Time, Turnaround Time, Waiting Time, Response Time, CPU Utilisation, Throughput, and SLA Compliance.</li>
+  <li>Classify tasks into Hard Real-Time, Soft Real-Time, and Non-Real-Time categories and examine the impact of continuously arriving emergencies.</li>
+  <li>Prevent race conditions, starvation, priority inversion, and deadlocks using Mutex locks, Counting Semaphores, Two-Phase Holds, Aging, Resource Ordering, RAG detection, and Banker's Algorithm.</li>
+</ul>
+
+<h2>3.2 Engineering Assumptions &amp; Scope</h2>
+<p>To ensure reproducible comparisons across all eight scheduling algorithms, the following engineering
+assumptions were established at the outset:</p>
+<ul style="padding-left:1.4rem;color:var(--ink-soft);font-size:9.5pt;line-height:1.9;">
+  <li><strong>Normalised Time Quantum.</strong> CPU burst times and arrivals are expressed in normalised scheduling ticks (1 tick = 1 unit of dispatch/processing work) for reproducible cross-algorithm mathematics.</li>
+  <li><strong>Single-CPU Scheduler Core.</strong> The core scheduling comparison evaluates single-processor preemption and context switching; multi-core SMP extension is documented in Section 12.</li>
+  <li><strong>Simulated Availability &amp; Telemetry.</strong> Hospital bed counts, trust scores, and coordinates represent realistic Kanakapura–Bengaluru locations with synthetic capacities.</li>
+  <li><strong>Decision-Support Boundary.</strong> Automated matching and two-phase holds reserve capacity tentatively; final clinical admission always requires receiving hospital acceptance.</li>
+</ul>
+
+<!-- ══════════════════════ SEC 4: SYSTEM ══════════════════════ -->
+<div class="page-break"></div>
+<h1><span class="sec-num">4.</span> System Description — 10-Hospital Network</h1>
+<p>
+Redline connects the origin node — Jain University Health Centre (Kanakapura Rd) — to nine receiving
+hospitals across South Bengaluru and Kanakapura. On the Live Dispatch console, staff submit patient or
+internal hospital tasks; the OS Engine admits a PCB, ranks eligible hospitals using Haversine ETA (50%),
+clinical trust (20%), data freshness (15%), and incoming load (15%), and executes a mutex-protected
+two-phase hold.
+</p>
+
+<div class="tbl-wrap no-break">
+<table>
+  <thead>
+    <tr>
+      <th>Aspect</th>
+      <th>Traditional Manual Phone Process</th>
+      <th>Redline OS-Based Coordination</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Hospital Discovery</strong></td>
+      <td>Staff call receiving desks sequentially, losing golden minutes.</td>
+      <td>Two-stage matcher filters and ranks all 9 receiving hospitals simultaneously.</td>
+    </tr>
+    <tr>
+      <td><strong>Bed Availability</strong></td>
+      <td>Isolated spreadsheets/phone notes go stale within minutes.</td>
+      <td>Shared counting semaphores with ISO-8601 timestamps &amp; stale-node flags.</td>
+    </tr>
+    <tr>
+      <td><strong>Double-Booking Risk</strong></td>
+      <td>Two callers verbally promised the same final ICU bed.</td>
+      <td>Mutex critical section + optimistic version tokens (HTTP 409 on conflict).</td>
+    </tr>
+    <tr>
+      <td><strong>Task Prioritisation</strong></td>
+      <td>Ad-hoc queuing delays stroke/cardiac tasks behind routine traffic.</td>
+      <td>Preemptive Priority + Aging + Real-Time EDF deadline tracking.</td>
+    </tr>
+    <tr>
+      <td><strong>Referral Visibility</strong></td>
+      <td>No live state tracking once a call is placed.</td>
+      <td>5-state PCB tracker, parallel Top-N holds (first-accept-wins) &amp; escalation.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ══════════════════════ SEC 5: MAPPING ══════════════════════ -->
+<h1><span class="sec-num">5.</span> Real-World to OS Mapping &amp; System Diagrams</h1>
+
+<div class="tbl-wrap no-break">
+<table>
+  <thead>
+    <tr>
+      <th>Real-World Hospital Entity / Event</th>
+      <th>Operating System Concept</th>
+      <th>Role &amp; Justification in Redline</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Cardiac arrest / trauma / stroke</td>
+      <td>High-priority preemptive process (P1–P3)</td>
+      <td>Immediately preempts running routine tasks for 0-tick first response.</td>
+    </tr>
+    <tr>
+      <td>ICU telemetry &amp; Stat ABG lab</td>
+      <td>Periodic / urgent real-time process (P2–P3)</td>
+      <td>Tracked against strict SLA deadlines under EDF and Priority scheduling.</td>
+    </tr>
+    <tr>
+      <td>OP walk-in, pharmacy refill, dialysis</td>
+      <td>Medium/low-priority process (P4–P8)</td>
+      <td>Queued in READY; protected from starvation by aging (−1 / 10 ticks).</td>
+    </tr>
+    <tr>
+      <td>Emergency arrival during routine work</td>
+      <td>Hardware interrupt / Preemption</td>
+      <td>Triggers context switch, saving interrupted PCB back to READY.</td>
+    </tr>
+    <tr>
+      <td>Central coordination server</td>
+      <td>Kernel / CPU Scheduler</td>
+      <td>Selects next READY PCB according to active policy (Priority, EDF, MLFQ, etc.).</td>
+    </tr>
+    <tr>
+      <td>Hospital matching engine</td>
+      <td>Resource allocator</td>
+      <td>Evaluates feasibility and scores candidate hospitals transparently.</td>
+    </tr>
+    <tr>
+      <td>ICU beds, Ventilators, Specialists</td>
+      <td>Counting Semaphores (S = free units)</td>
+      <td>wait(S) decrements on PREPARE hold; signal(S) restores on reject/expiry.</td>
+    </tr>
+    <tr>
+      <td>Simultaneous last-bed claims</td>
+      <td>Critical section &amp; Race condition</td>
+      <td>Serialised via threading.Lock mutex + compare-and-swap version token.</td>
+    </tr>
+    <tr>
+      <td>Referral hold &amp; hospital reply</td>
+      <td>Asynchronous IPC Message Queue</td>
+      <td>Non-blocking PREPARE holds move PCB to WAITING until reply or timeout.</td>
+    </tr>
+    <tr>
+      <td>Holding ICU bed while waiting for Vent</td>
+      <td>Deadlock (Circular Wait)</td>
+      <td>Prevented by global resource ordering; resolved by RAG victim release.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- Architecture diagram -->
+<div class="fig-wrap no-break">
+  <div class="arch-diagram" style="max-width:580px;margin:0 auto;">
+    <div class="arch-layer l1">
+      <div class="arch-layer-title">PRESENTATION LAYER</div>
+      <div class="arch-layer-detail">Liquid Glass UI · Light/Dark · EN / HI / KN · RBAC Switcher<br>
+      9 Operational Screens (Dispatch, OS Kernel Workbench, Analytics, Bed Board, Surge, Tracker, Matches, Coordination, New Request) + Style Guide</div>
+    </div>
+    <div class="arch-arrow">▼</div>
+    <div class="arch-layer l2">
+      <div class="arch-layer-title">FLASK REST API &amp; SECURITY LAYER</div>
+      <div class="arch-layer-detail">/api/requests (409 Dup) · /api/matches · /api/refer · /api/facilities (409 Ver) · /api/monitor · /api/scheduler/control · /api/export/csv</div>
+    </div>
+    <div class="arch-arrow">▼</div>
+    <div class="arch-layer l3">
+      <div class="arch-layer-title">OS KERNEL &amp; SIMULATION ENGINE</div>
+      <div class="arch-layer-detail">8-Policy Scheduler + Aging + EDF + MLFQ · Explainable Matcher · Mutex + Semaphores + 2-Phase Hold · Banker's + RAG Deadlock + Workers</div>
+    </div>
+    <div class="arch-arrow">▼</div>
+    <div class="arch-layer l4">
+      <div class="arch-layer-title">SIMULATED DATA, TELEMETRY &amp; AUDIT LAYER</div>
+      <div class="arch-layer-detail">10 Kanakapura–Bengaluru Hospitals · Versioned Facility Semaphores · 8+ Seeded Hospital Processes · IPC Event Log &amp; RBAC Audit Trail</div>
+    </div>
+  </div>
+  <div class="fig-caption">Figure 1. Redline layered architecture connecting the 9-screen UI, Flask API, 8-policy OS Kernel, and 10-hospital data store.</div>
+</div>
+
+<!-- Flowchart (SVG) -->
+<div class="fig-wrap no-break">
+<svg viewBox="0 0 700 340" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:700px;font-family:Georgia,serif;">
+  <rect x="10" y="10" width="140" height="38" rx="4" fill="#f0f0f0" stroke="#bbb"/>
+  <text x="80" y="26" text-anchor="middle" font-size="8" fill="#333" font-weight="bold">1. Activity Intake</text>
+  <text x="80" y="38" text-anchor="middle" font-size="7" fill="#666">Emerg, ICU, Lab, OP, Pharm</text>
+
+  <rect x="200" y="10" width="140" height="38" rx="4" fill="#f0f0f0" stroke="#bbb"/>
+  <text x="270" y="26" text-anchor="middle" font-size="8" fill="#333" font-weight="bold">2. Duplicate Check?</text>
+  <text x="270" y="38" text-anchor="middle" font-size="7" fill="#666">Active patient_hash?</text>
+
+  <rect x="390" y="10" width="140" height="38" rx="4" fill="#e8edf5" stroke="#2c4a7c"/>
+  <text x="460" y="26" text-anchor="middle" font-size="8" fill="#2c4a7c" font-weight="bold">3. Admit PCB (READY)</text>
+  <text x="460" y="38" text-anchor="middle" font-size="7" fill="#2c4a7c">Assign P1–P8, BT, SLA DL</text>
+
+  <rect x="570" y="10" width="120" height="38" rx="4" fill="#e8edf5" stroke="#2c4a7c"/>
+  <text x="630" y="26" text-anchor="middle" font-size="8" fill="#2c4a7c" font-weight="bold">4. CPU Scheduler</text>
+  <text x="630" y="38" text-anchor="middle" font-size="7" fill="#2c4a7c">Preempt if P_new &lt; P_run</text>
+
+  <rect x="200" y="90" width="140" height="38" rx="4" fill="#fdf2f2" stroke="#c08080"/>
+  <text x="270" y="106" text-anchor="middle" font-size="8" fill="#8b3a3a" font-weight="bold">HTTP 409 Warning</text>
+  <text x="270" y="118" text-anchor="middle" font-size="7" fill="#8b3a3a">Prompt override or abort</text>
+
+  <rect x="10" y="180" width="130" height="38" rx="4" fill="#e8f5ea" stroke="#80b88a"/>
+  <text x="75" y="196" text-anchor="middle" font-size="8" fill="#2a6632" font-weight="bold">7. Parallel Top-N Hold</text>
+  <text x="75" y="208" text-anchor="middle" font-size="7" fill="#2a6632">PCB → WAITING; await reply</text>
+
+  <rect x="195" y="180" width="150" height="38" rx="4" fill="#f0f0f0" stroke="#bbb"/>
+  <text x="270" y="196" text-anchor="middle" font-size="8" fill="#333" font-weight="bold">6. Mutex Critical Section</text>
+  <text x="270" y="208" text-anchor="middle" font-size="7" fill="#666">Order resources; S−, v++, PREPARE</text>
+
+  <rect x="400" y="180" width="130" height="38" rx="4" fill="#f0f0f0" stroke="#bbb"/>
+  <text x="465" y="196" text-anchor="middle" font-size="8" fill="#333" font-weight="bold">5. Hospital Matcher</text>
+  <text x="465" y="208" text-anchor="middle" font-size="7" fill="#666">Filter free S&gt;0; rank ETA/Trust</text>
+
+  <rect x="10" y="270" width="130" height="38" rx="4" fill="#e8f5ea" stroke="#80b88a"/>
+  <text x="75" y="286" text-anchor="middle" font-size="8" fill="#2a6632" font-weight="bold">8a. ACCEPT (First Wins)</text>
+  <text x="75" y="298" text-anchor="middle" font-size="7" fill="#2a6632">COMMITTED; sibling signal(S)</text>
+
+  <rect x="200" y="270" width="140" height="38" rx="4" fill="#fdf2f2" stroke="#c08080"/>
+  <text x="270" y="286" text-anchor="middle" font-size="8" fill="#8b3a3a" font-weight="bold">8b. REJECT / EXPIRED</text>
+  <text x="270" y="298" text-anchor="middle" font-size="7" fill="#8b3a3a">signal(S) restores; Escalate</text>
+
+  <rect x="400" y="270" width="140" height="38" rx="4" fill="#fff3e0" stroke="#d09050"/>
+  <text x="470" y="286" text-anchor="middle" font-size="8" fill="#7a4a00" font-weight="bold">8c. Banker / RAG Check</text>
+  <text x="470" y="298" text-anchor="middle" font-size="7" fill="#7a4a00">Deadlock → release victim</text>
+
+  <rect x="570" y="270" width="120" height="38" rx="4" fill="#e8edf5" stroke="#2c4a7c"/>
+  <text x="630" y="286" text-anchor="middle" font-size="8" fill="#2c4a7c" font-weight="bold">9. TERMINATED</text>
+  <text x="630" y="298" text-anchor="middle" font-size="7" fill="#2c4a7c">Ambulance ETA · Audit log</text>
+
+  <line x1="150" y1="29" x2="200" y2="29" stroke="#999" stroke-width="1.2" marker-end="url(#arr)"/>
+  <line x1="340" y1="29" x2="390" y2="29" stroke="#999" stroke-width="1.2" marker-end="url(#arr)"/>
+  <text x="362" y="23" text-anchor="middle" font-size="7" fill="#2a6632">No</text>
+  <line x1="270" y1="48" x2="270" y2="90" stroke="#c08080" stroke-width="1.2" marker-end="url(#arr)"/>
+  <text x="278" y="72" font-size="7" fill="#8b3a3a">Yes</text>
+  <line x1="530" y1="29" x2="570" y2="29" stroke="#999" stroke-width="1.2" marker-end="url(#arr)"/>
+  <line x1="630" y1="48" x2="630" y2="150" stroke="#999" stroke-width="1.2"/>
+  <line x1="630" y1="150" x2="465" y2="150" stroke="#999" stroke-width="1.2"/>
+  <line x1="465" y1="150" x2="465" y2="180" stroke="#999" stroke-width="1.2" marker-end="url(#arr)"/>
+  <line x1="400" y1="199" x2="345" y2="199" stroke="#999" stroke-width="1.2" marker-end="url(#arr)"/>
+  <line x1="195" y1="199" x2="140" y2="199" stroke="#999" stroke-width="1.2" marker-end="url(#arr)"/>
+  <line x1="75" y1="218" x2="75" y2="270" stroke="#2a6632" stroke-width="1.2" marker-end="url(#arr)"/>
+  <text x="82" y="250" font-size="7" fill="#2a6632">Accept</text>
+  <line x1="140" y1="218" x2="200" y2="270" stroke="#c08080" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#arr)"/>
+  <text x="150" y="258" font-size="7" fill="#8b3a3a">Timeout</text>
+  <line x1="345" y1="218" x2="400" y2="270" stroke="#d09050" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#arr)"/>
+  <text x="355" y="258" font-size="7" fill="#7a4a00">Multi-Res</text>
+  <line x1="340" y1="289" x2="400" y2="289" stroke="#c08080" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arr)"/>
+  <text x="368" y="283" font-size="7" fill="#8b3a3a">Retry Next</text>
+  <line x1="140" y1="289" x2="390" y2="289" stroke="#999" stroke-width="1" stroke-dasharray="3,2"/>
+  <line x1="390" y1="289" x2="390" y2="316" stroke="#999" stroke-width="1"/>
+  <line x1="390" y1="316" x2="570" y2="316" stroke="#999" stroke-width="1" marker-end="url(#arr)"/>
+  <line x1="540" y1="289" x2="570" y2="289" stroke="#999" stroke-width="1" marker-end="url(#arr)"/>
+
+  <defs>
+    <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#999"/>
+    </marker>
+  </defs>
+</svg>
+  <div class="fig-caption">Figure 2. End-to-end hospital activity dispatch, duplicate check, CPU scheduling, mutex reservation, and recovery flowchart.</div>
+</div>
+
+<!-- ══════════════════════ SEC 6: OS CONCEPTS ══════════════════════ -->
+<div class="page-break"></div>
+<h1><span class="sec-num">6.</span> OS Concepts, 5-State Lifecycle &amp; Real-Time Classification</h1>
+<p>
+Every hospital task is instantiated as a <strong>Process Control Block (PCB)</strong> carrying its PID, subsystem category,
+arrival time, base and effective priority, remaining burst time, real-time SLA deadline, and waiting-tick counter.
+Tasks transition cleanly across five states so CPU dispatch never stalls while awaiting external hospital replies.
+</p>
+
+<!-- 5-state lifecycle -->
+<div class="fig-wrap no-break">
+  <p class="text-center small" style="margin-bottom:.5rem;font-weight:bold;">Five-State Process Lifecycle &amp; PCB Structure in Redline</p>
+  <div class="lifecycle">
+    <div class="state-box">NEW<br><span style="font-weight:normal;font-size:7.5pt;">Intake created</span></div>
+    <div class="state-arrow">→</div>
+    <div class="state-box active">READY<br><span style="font-weight:normal;font-size:7.5pt;">Priority + Aging Q</span></div>
+    <div class="state-arrow">→</div>
+    <div class="state-box">RUNNING<br><span style="font-weight:normal;font-size:7.5pt;">Matching &amp; Mutex</span></div>
+    <div class="state-arrow">→</div>
+    <div class="state-box">TERMINATED<br><span style="font-weight:normal;font-size:7.5pt;">Committed / Done</span></div>
+  </div>
+  <div class="lifecycle" style="margin-top:.3rem;">
+    <div style="width:70px;"></div>
+    <div class="state-arrow" style="transform:rotate(90deg);">→</div>
+    <div class="state-box" style="background:#fff8e8;border-color:#d0a040;">WAITING<br><span style="font-weight:normal;font-size:7.5pt;">Awaiting Hold Reply</span></div>
+    <div class="state-arrow" style="transform:rotate(180deg);">→</div>
+  </div>
+  <div class="fig-caption">Figure 3. Five-state PCB lifecycle showing preemption back to READY and non-blocking WAITING during parallel holds.<br>
+  <span style="font-size:7.5pt;">PCB Fields: PID | Category | Arrival Time | Base &amp; Effective Priority (P1–P8) | Burst / Remaining | SLA Deadline | Wait Ticks | State</span></div>
+</div>
+
+<h2>6.1 Real-Time Task Classification</h2>
+<div class="tbl-wrap no-break">
+<table>
+  <thead>
+    <tr>
+      <th>Real-Time Class</th>
+      <th>Hospital Activities Covered</th>
+      <th>Priority &amp; SLA Target</th>
+      <th>OS Scheduling Justification</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Hard Real-Time</strong><br><span class="small">(Design Target)</span></td>
+      <td>Cardiac Arrest (P1), Trauma ICU+Vent (P2), ICU Ventilator Telemetry (P2), Stroke Unit (P3), Stat ABG Lab (P3)</td>
+      <td>P1–P3; Tight SLA slack (+3 to +7 ticks); 0-tick dispatch target</td>
+      <td>A missed deadline or double-booked bed directly endangers patient survival; immediate preemption is mandatory.</td>
+    </tr>
+    <tr>
+      <td><strong>Soft Real-Time</strong></td>
+      <td>Hospital Availability Sync (P4), ICU Epinephrine Stat Pharmacy (P4), Urgent Lab/Record Share (P5), OP Triage (P5)</td>
+      <td>P4–P5; Moderate slack (+12 to +15 ticks)</td>
+      <td>Timely execution keeps hospital telemetry fresh and pharmacy/triage responsive; a brief delay is tolerable.</td>
+    </tr>
+    <tr>
+      <td><strong>Non-Real-Time</strong></td>
+      <td>Specialist Enquiry (P6), Planned Dialysis Transfer (P7), Pharmacy Ward Refill (P7), Discharge-Back (P8)</td>
+      <td>P6–P8; High slack (+20 to +32 ticks)</td>
+      <td>Background/routine workflows without hard deadlines; must avoid starvation via aging.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>6.2 Ten-Process Full Hospital Clinical Mix (H1–H10)</h2>
+<p>In addition to the 8-process baseline (T1–T8) and 8 live seeded system requests (REQ-1001–REQ-1008),
+Redline includes a 10-process clinical mix covering all five subsystems:</p>
+
+<div class="tbl-wrap no-break">
+<table>
+  <thead>
+    <tr><th>PID</th><th>Hospital Activity</th><th>Subsystem</th><th>AT</th><th>Prio</th><th>BT</th><th>SLA DL</th><th>RT Class</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="col-mono">H1</td><td>OP Walk-in Registration</td><td>OP Patient</td><td>0</td><td>P6</td><td>4</td><td>t=28</td><td><span class="badge badge-nrt">Non-RT</span></td></tr>
+    <tr><td class="col-mono">H2</td><td>Routine Lab CBC Batch</td><td>Laboratory</td><td>0</td><td>P5</td><td>6</td><td>t=26</td><td><span class="badge badge-soft">Soft RT</span></td></tr>
+    <tr><td class="col-mono">H3</td><td>Pharmacy Ward Refill</td><td>Pharmacy</td><td>1</td><td>P7</td><td>3</td><td>t=32</td><td><span class="badge badge-nrt">Non-RT</span></td></tr>
+    <tr><td class="col-mono">H4</td><td>ICU Ventilator Telemetry</td><td>ICU Monitoring</td><td>2</td><td>P2</td><td>4</td><td>t=9</td><td><span class="badge badge-hard">Hard RT</span></td></tr>
+    <tr><td class="col-mono">H5</td><td>Cardiac Arrest Code Blue</td><td>Emergency</td><td>3</td><td>P1</td><td>6</td><td>t=10</td><td><span class="badge badge-hard">Hard RT</span></td></tr>
+    <tr><td class="col-mono">H6</td><td>Stat ABG Blood Gas Lab</td><td>Laboratory</td><td>4</td><td>P3</td><td>3</td><td>t=12</td><td><span class="badge badge-hard">Hard RT</span></td></tr>
+    <tr><td class="col-mono">H7</td><td>Road Trauma Multi-Organ</td><td>Emergency</td><td>5</td><td>P2</td><td>5</td><td>t=14</td><td><span class="badge badge-hard">Hard RT</span></td></tr>
+    <tr><td class="col-mono">H8</td><td>ICU Epinephrine Stat</td><td>Pharmacy</td><td>6</td><td>P4</td><td>2</td><td>t=16</td><td><span class="badge badge-soft">Soft RT</span></td></tr>
+    <tr><td class="col-mono">H9</td><td>Stroke Thrombolysis Unit</td><td>Emergency</td><td>7</td><td>P3</td><td>4</td><td>t=18</td><td><span class="badge badge-hard">Hard RT</span></td></tr>
+    <tr><td class="col-mono">H10</td><td>OP Discharge Summary</td><td>OP Patient</td><td>8</td><td>P8</td><td>3</td><td>t=38</td><td><span class="badge badge-nrt">Non-RT</span></td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ══════════════════════ SEC 7: SCHEDULING ══════════════════════ -->
+<div class="page-break"></div>
+<h1><span class="sec-num">7.</span> CPU Scheduling Analysis, Calculations &amp; Gantt Charts</h1>
+<p>
+To compare policies without bias, all algorithms are evaluated on the standard eight-process workload (T1–T8),
+where routine tasks arrive early (t=0–3) and critical emergencies arrive later (t=4–6). Scheduling formulae
+used throughout: <strong>TAT = CT − AT</strong>, <strong>WT = TAT − BT</strong>, <strong>RT = First Dispatch − AT</strong>.
+</p>
+
+<div class="tbl-wrap no-break">
+<table>
+  <thead>
+    <tr><th>PID</th><th>Hospital Activity</th><th>AT</th><th>Priority</th><th>BT</th><th>SLA DL</th><th>Subsystem</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="col-mono">T1</td><td>Availability sync</td><td>0</td><td>P4</td><td>8</td><td>t=20</td><td>Transfer</td></tr>
+    <tr><td class="col-mono">T2</td><td>Step-down transfer</td><td>0</td><td>P8</td><td>3</td><td>t=35</td><td>OP Patient</td></tr>
+    <tr><td class="col-mono">T3</td><td>Specialist enquiry</td><td>1</td><td>P6</td><td>4</td><td>t=25</td><td>OP Patient</td></tr>
+    <tr><td class="col-mono">T4</td><td>Planned dialysis transfer</td><td>2</td><td>P7</td><td>3</td><td>t=31</td><td>Transfer</td></tr>
+    <tr><td class="col-mono">T5</td><td>Record / lab sharing</td><td>3</td><td>P5</td><td>4</td><td>t=22</td><td>Laboratory</td></tr>
+    <tr><td class="col-mono">T6</td><td>Stroke neuro-unit</td><td>4</td><td>P3</td><td>5</td><td>t=16</td><td>Emergency</td></tr>
+    <tr><td class="col-mono">T7</td><td>Road accident ICU + vent</td><td>5</td><td>P2</td><td>6</td><td>t=16</td><td>Emergency</td></tr>
+    <tr><td class="col-mono">T8</td><td>Cardiac arrest ICU</td><td>6</td><td>P1</td><td>7</td><td>t=16</td><td>Emergency</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- Gantt SVG -->
+<div class="fig-wrap no-break">
+<p class="text-center small" style="font-weight:bold;margin-bottom:.6rem;">Multi-Algorithm Gantt Charts on Case Study Workload (T1–T8)</p>
+<div class="gantt-wrap">
+<svg viewBox="0 0 700 310" xmlns="http://www.w3.org/2000/svg" class="gantt-svg" style="font-family:Georgia,serif;">
+  <defs>
+    <style>
+      .g-t1{fill:#8fa8d0}.g-t2{fill:#b0ccb0}.g-t3{fill:#d4a0a0}.g-t4{fill:#c8b8e0}
+      .g-t5{fill:#e0cc98}.g-t6{fill:#e08080}.g-t7{fill:#a0c0e0}.g-t8{fill:#c8a0c8}
+      .g-label{font-size:7px;fill:#333;font-weight:bold}
+      .g-row-label{font-size:8px;fill:#555;text-anchor:end}
+      .g-tick{font-size:7px;fill:#999;text-anchor:middle}
+    </style>
+  </defs>
+
+  <text class="g-row-label" x="88" y="34">FCFS</text>
+  <text class="g-row-label" x="88" y="82">SJF (Non-Preem)</text>
+  <text class="g-row-label" x="88" y="130">SRTF (Preem SJF)</text>
+  <text class="g-row-label" x="88" y="178">Preemptive Priority</text>
+  <text class="g-row-label" x="88" y="226">Round Robin (Q=3)</text>
+  <text class="g-row-label" x="88" y="274">EDF (Real-Time)</text>
+
+  <line x1="90" y1="295" x2="690" y2="295" stroke="#ccc" stroke-width="1"/>
+  <text class="g-tick" x="90" y="305">0</text>
+  <text class="g-tick" x="165" y="305">5</text>
+  <text class="g-tick" x="240" y="305">10</text>
+  <text class="g-tick" x="315" y="305">15</text>
+  <text class="g-tick" x="390" y="305">20</text>
+  <text class="g-tick" x="465" y="305">25</text>
+  <text class="g-tick" x="540" y="305">30</text>
+  <text class="g-tick" x="615" y="305">35</text>
+  <text class="g-tick" x="690" y="305">40</text>
+  <text x="380" y="315" text-anchor="middle" font-size="7" fill="#999">Normalised CPU Time Units (0 to 40 ticks)</text>
+
+  <rect class="g-t1" x="90" y="20" width="120" height="22" rx="2"/><text class="g-label" x="150" y="34">T1</text>
+  <rect class="g-t2" x="210" y="20" width="45" height="22" rx="2"/><text class="g-label" x="230" y="34">T2</text>
+  <rect class="g-t3" x="255" y="20" width="60" height="22" rx="2"/><text class="g-label" x="282" y="34">T3</text>
+  <rect class="g-t4" x="315" y="20" width="45" height="22" rx="2"/><text class="g-label" x="334" y="34">T4</text>
+  <rect class="g-t5" x="360" y="20" width="60" height="22" rx="2"/><text class="g-label" x="387" y="34">T5</text>
+  <rect class="g-t6" x="420" y="20" width="75" height="22" rx="2"/><text class="g-label" x="453" y="34">T6</text>
+  <rect class="g-t7" x="495" y="20" width="90" height="22" rx="2"/><text class="g-label" x="535" y="34">T7</text>
+  <rect class="g-t8" x="585" y="20" width="105" height="22" rx="2"/><text class="g-label" x="630" y="34">T8</text>
+
+  <rect class="g-t2" x="90" y="68" width="45" height="22" rx="2"/><text class="g-label" x="108" y="82">T2</text>
+  <rect class="g-t4" x="135" y="68" width="45" height="22" rx="2"/><text class="g-label" x="153" y="82">T4</text>
+  <rect class="g-t3" x="180" y="68" width="60" height="22" rx="2"/><text class="g-label" x="206" y="82">T3</text>
+  <rect class="g-t5" x="240" y="68" width="60" height="22" rx="2"/><text class="g-label" x="266" y="82">T5</text>
+  <rect class="g-t6" x="300" y="68" width="75" height="22" rx="2"/><text class="g-label" x="332" y="82">T6</text>
+  <rect class="g-t7" x="375" y="68" width="90" height="22" rx="2"/><text class="g-label" x="414" y="82">T7</text>
+  <rect class="g-t8" x="465" y="68" width="105" height="22" rx="2"/><text class="g-label" x="513" y="82">T8</text>
+  <rect class="g-t1" x="570" y="68" width="120" height="22" rx="2"/><text class="g-label" x="625" y="82">T1</text>
+
+  <rect class="g-t2" x="90" y="116" width="45" height="22" rx="2"/><text class="g-label" x="108" y="130">T2</text>
+  <rect class="g-t4" x="135" y="116" width="45" height="22" rx="2"/><text class="g-label" x="153" y="130">T4</text>
+  <rect class="g-t3" x="180" y="116" width="60" height="22" rx="2"/><text class="g-label" x="206" y="130">T3</text>
+  <rect class="g-t5" x="240" y="116" width="60" height="22" rx="2"/><text class="g-label" x="266" y="130">T5</text>
+  <rect class="g-t6" x="300" y="116" width="75" height="22" rx="2"/><text class="g-label" x="332" y="130">T6</text>
+  <rect class="g-t7" x="375" y="116" width="90" height="22" rx="2"/><text class="g-label" x="414" y="130">T7</text>
+  <rect class="g-t8" x="465" y="116" width="105" height="22" rx="2"/><text class="g-label" x="513" y="130">T8</text>
+  <rect class="g-t1" x="570" y="116" width="120" height="22" rx="2"/><text class="g-label" x="625" y="130">T1</text>
+
+  <rect class="g-t1" x="90" y="164" width="90" height="22" rx="2"/><text class="g-label" x="130" y="178">T1</text>
+  <rect class="g-t6" x="180" y="164" width="30" height="22" rx="2"/><text class="g-label" x="190" y="178">T6</text>
+  <rect class="g-t7" x="210" y="164" width="30" height="22" rx="2"/><text class="g-label" x="220" y="178">T7</text>
+  <rect class="g-t8" x="240" y="164" width="105" height="22" rx="2"/><text class="g-label" x="286" y="178">T8</text>
+  <rect class="g-t7" x="345" y="164" width="60" height="22" rx="2"/><text class="g-label" x="370" y="178">T7</text>
+  <rect class="g-t6" x="405" y="164" width="45" height="22" rx="2"/><text class="g-label" x="423" y="178">T6</text>
+  <rect class="g-t1" x="450" y="164" width="60" height="22" rx="2"/><text class="g-label" x="474" y="178">T1</text>
+  <rect class="g-t5" x="510" y="164" width="60" height="22" rx="2"/><text class="g-label" x="534" y="178">T5</text>
+  <rect class="g-t3" x="570" y="164" width="30" height="22" rx="2"/><text class="g-label" x="582" y="178">T3</text>
+  <rect class="g-t4" x="600" y="164" width="30" height="22" rx="2"/><text class="g-label" x="612" y="178">T4</text>
+  <rect class="g-t2" x="630" y="164" width="60" height="22" rx="2"/><text class="g-label" x="655" y="178">T2</text>
+
+  <rect class="g-t1" x="90" y="212" width="45" height="22" rx="2"/><text class="g-label" x="108" y="226">T1</text>
+  <rect class="g-t2" x="135" y="212" width="45" height="22" rx="2"/><text class="g-label" x="153" y="226">T2</text>
+  <rect class="g-t3" x="180" y="212" width="45" height="22" rx="2"/><text class="g-label" x="198" y="226">T3</text>
+  <rect class="g-t4" x="225" y="212" width="45" height="22" rx="2"/><text class="g-label" x="243" y="226">T4</text>
+  <rect class="g-t5" x="270" y="212" width="45" height="22" rx="2"/><text class="g-label" x="288" y="226">T5</text>
+  <rect class="g-t1" x="315" y="212" width="45" height="22" rx="2"/><text class="g-label" x="333" y="226">T1</text>
+  <rect class="g-t6" x="360" y="212" width="45" height="22" rx="2"/><text class="g-label" x="378" y="226">T6</text>
+  <rect class="g-t7" x="405" y="212" width="45" height="22" rx="2"/><text class="g-label" x="423" y="226">T7</text>
+  <rect class="g-t8" x="450" y="212" width="45" height="22" rx="2"/><text class="g-label" x="468" y="226">T8</text>
+  <rect class="g-t3" x="495" y="212" width="15" height="22" rx="2"/><text class="g-label" x="499" y="226">T3</text>
+  <rect class="g-t5" x="510" y="212" width="15" height="22" rx="2"/><text class="g-label" x="514" y="226">T5</text>
+  <rect class="g-t1" x="525" y="212" width="30" height="22" rx="2"/><text class="g-label" x="535" y="226">T1</text>
+  <rect class="g-t6" x="555" y="212" width="30" height="22" rx="2"/><text class="g-label" x="565" y="226">T6</text>
+  <rect class="g-t7" x="585" y="212" width="45" height="22" rx="2"/><text class="g-label" x="603" y="226">T7</text>
+  <rect class="g-t8" x="630" y="212" width="60" height="22" rx="2"/><text class="g-label" x="655" y="226">T8</text>
+
+  <rect class="g-t1" x="90" y="260" width="90" height="22" rx="2"/><text class="g-label" x="130" y="274">T1</text>
+  <rect class="g-t6" x="180" y="260" width="75" height="22" rx="2"/><text class="g-label" x="213" y="274">T6</text>
+  <rect class="g-t8" x="255" y="260" width="105" height="22" rx="2"/><text class="g-label" x="300" y="274">T8</text>
+  <rect class="g-t7" x="360" y="260" width="90" height="22" rx="2"/><text class="g-label" x="400" y="274">T7</text>
+  <rect class="g-t1" x="450" y="260" width="30" height="22" rx="2"/><text class="g-label" x="460" y="274">T1</text>
+  <rect class="g-t5" x="480" y="260" width="60" height="22" rx="2"/><text class="g-label" x="505" y="274">T5</text>
+  <rect class="g-t3" x="540" y="260" width="60" height="22" rx="2"/><text class="g-label" x="565" y="274">T3</text>
+  <rect class="g-t4" x="600" y="260" width="45" height="22" rx="2"/><text class="g-label" x="618" y="274">T4</text>
+  <rect class="g-t2" x="645" y="260" width="45" height="22" rx="2"/><text class="g-label" x="662" y="274">T2</text>
+
+  <g stroke="#e0e0e0" stroke-width="0.5">
+    <line x1="165" y1="10" x2="165" y2="292"/>
+    <line x1="240" y1="10" x2="240" y2="292"/>
+    <line x1="315" y1="10" x2="315" y2="292"/>
+    <line x1="390" y1="10" x2="390" y2="292"/>
+    <line x1="465" y1="10" x2="465" y2="292"/>
+    <line x1="540" y1="10" x2="540" y2="292"/>
+    <line x1="615" y1="10" x2="615" y2="292"/>
+  </g>
+</svg>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:.4rem;font-size:7.5pt;margin-top:.3rem;margin-bottom:.5rem;">
+  <span style="display:flex;align-items:center;gap:.25rem;"><span style="width:14px;height:10px;background:#c8a0c8;display:inline-block;border-radius:2px;"></span>T8: Cardiac Arrest (P1)</span>
+  <span style="display:flex;align-items:center;gap:.25rem;"><span style="width:14px;height:10px;background:#a0c0e0;display:inline-block;border-radius:2px;"></span>T7: Trauma ICU (P2)</span>
+  <span style="display:flex;align-items:center;gap:.25rem;"><span style="width:14px;height:10px;background:#e08080;display:inline-block;border-radius:2px;"></span>T6: Stroke Unit (P3)</span>
+  <span style="display:flex;align-items:center;gap:.25rem;"><span style="width:14px;height:10px;background:#8fa8d0;display:inline-block;border-radius:2px;"></span>T1: Avail Sync (P4)</span>
+  <span style="display:flex;align-items:center;gap:.25rem;"><span style="width:14px;height:10px;background:#e0cc98;display:inline-block;border-radius:2px;"></span>T5: Lab Share (P5)</span>
+  <span style="display:flex;align-items:center;gap:.25rem;"><span style="width:14px;height:10px;background:#d4a0a0;display:inline-block;border-radius:2px;"></span>T3: Specialist (P6)</span>
+  <span style="display:flex;align-items:center;gap:.25rem;"><span style="width:14px;height:10px;background:#c8b8e0;display:inline-block;border-radius:2px;"></span>T4: Dialysis (P7)</span>
+  <span style="display:flex;align-items:center;gap:.25rem;"><span style="width:14px;height:10px;background:#b0ccb0;display:inline-block;border-radius:2px;"></span>T2: Discharge (P8)</span>
+</div>
+<div class="fig-caption">Figure 4. Colour-coded Gantt charts across FCFS, SJF, SRTF, Preemptive Priority, Round Robin (Q=3), and Real-Time EDF (0–40 ticks).</div>
+</div>
+
+<!-- 7.1 FCFS -->
+<h2>7.1 First Come First Served (FCFS)</h2>
+<div class="tbl-wrap no-break">
+<table>
+  <thead><tr><th>PID</th><th>AT</th><th>Prio</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr></thead>
+  <tbody>
+    <tr><td class="col-mono">T1</td><td>0</td><td>P4</td><td>8</td><td>8</td><td>8</td><td>0</td><td>0</td></tr>
+    <tr><td class="col-mono">T2</td><td>0</td><td>P8</td><td>3</td><td>11</td><td>11</td><td>8</td><td>8</td></tr>
+    <tr><td class="col-mono">T3</td><td>1</td><td>P6</td><td>4</td><td>15</td><td>14</td><td>10</td><td>10</td></tr>
+    <tr><td class="col-mono">T4</td><td>2</td><td>P7</td><td>3</td><td>18</td><td>16</td><td>13</td><td>13</td></tr>
+    <tr><td class="col-mono">T5</td><td>3</td><td>P5</td><td>4</td><td>22</td><td>19</td><td>15</td><td>15</td></tr>
+    <tr><td class="col-mono">T6</td><td>4</td><td>P3</td><td>5</td><td>27</td><td>23</td><td>18</td><td>18</td></tr>
+    <tr><td class="col-mono">T7</td><td>5</td><td>P2</td><td>6</td><td>33</td><td>28</td><td>22</td><td>22</td></tr>
+    <tr><td class="col-mono col-crit">T8</td><td>6</td><td>P1</td><td>7</td><td>40</td><td>34</td><td class="col-crit">27</td><td class="col-crit">27</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="obs-box"><strong>Averages:</strong> Wait = 14.12 · TAT = 19.12 · Resp = 14.12 · Critical (T6–T8) Avg Resp = 22.33 · Switches = 0.<br>
+<strong>Observation:</strong> Non-preemptive FIFO causes severe convoy delay. Cardiac Arrest (T8) arrives at t=6 but waits until t=33 (RT=27) — a clinically unacceptable outcome.</div>
+
+<!-- 7.2 SJF -->
+<h2>7.2 Shortest Job First (SJF — Non-Preemptive) &amp; SRTF</h2>
+<div class="tbl-wrap no-break">
+<table>
+  <thead><tr><th>PID</th><th>AT</th><th>Prio</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr></thead>
+  <tbody>
+    <tr><td class="col-mono col-crit">T1</td><td>0</td><td>P4</td><td>8</td><td>40</td><td>40</td><td class="col-crit">32</td><td class="col-crit">32</td></tr>
+    <tr><td class="col-mono">T2</td><td>0</td><td>P8</td><td>3</td><td>3</td><td>3</td><td>0</td><td>0</td></tr>
+    <tr><td class="col-mono">T3</td><td>1</td><td>P6</td><td>4</td><td>10</td><td>9</td><td>5</td><td>5</td></tr>
+    <tr><td class="col-mono">T4</td><td>2</td><td>P7</td><td>3</td><td>6</td><td>4</td><td>1</td><td>1</td></tr>
+    <tr><td class="col-mono">T5</td><td>3</td><td>P5</td><td>4</td><td>14</td><td>11</td><td>7</td><td>7</td></tr>
+    <tr><td class="col-mono">T6</td><td>4</td><td>P3</td><td>5</td><td>19</td><td>15</td><td>10</td><td>10</td></tr>
+    <tr><td class="col-mono">T7</td><td>5</td><td>P2</td><td>6</td><td>25</td><td>20</td><td>14</td><td>14</td></tr>
+    <tr><td class="col-mono">T8</td><td>6</td><td>P1</td><td>7</td><td>32</td><td>26</td><td>19</td><td>19</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="obs-box"><strong>Averages:</strong> Wait = 11.0 · TAT = 16.0 · Resp = 11.0 · Critical (T6–T8) Avg Resp = 14.33 · Switches = 0.<br>
+<strong>Observation:</strong> SJF and SRTF achieve the lowest overall average wait (11.00 ticks) on this workload, but still delay Cardiac Arrest (T8) until t=25 (RT=19) behind shorter routine tasks — an inadequate outcome for a P1 emergency.</div>
+
+<!-- 7.3 Preemptive Priority -->
+<div class="page-break"></div>
+<h2>7.3 Preemptive Priority Scheduling <em>(Recommended Core Policy)</em></h2>
+<div class="tbl-wrap no-break">
+<table>
+  <thead><tr><th>PID</th><th>AT</th><th>Prio</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr></thead>
+  <tbody>
+    <tr><td class="col-mono">T1</td><td>0</td><td>P4</td><td>8</td><td>26</td><td>26</td><td>18</td><td>0</td></tr>
+    <tr><td class="col-mono">T2</td><td>0</td><td>P8</td><td>3</td><td>40</td><td>40</td><td>37</td><td>37</td></tr>
+    <tr><td class="col-mono">T3</td><td>1</td><td>P6</td><td>4</td><td>34</td><td>33</td><td>29</td><td>29</td></tr>
+    <tr><td class="col-mono">T4</td><td>2</td><td>P7</td><td>3</td><td>37</td><td>35</td><td>32</td><td>32</td></tr>
+    <tr><td class="col-mono">T5</td><td>3</td><td>P5</td><td>4</td><td>30</td><td>27</td><td>23</td><td>23</td></tr>
+    <tr><td class="col-mono col-good">T6</td><td>4</td><td>P3</td><td>5</td><td>22</td><td>18</td><td>13</td><td class="col-good">0</td></tr>
+    <tr><td class="col-mono col-good">T7</td><td>5</td><td>P2</td><td>6</td><td>18</td><td>13</td><td>7</td><td class="col-good">0</td></tr>
+    <tr><td class="col-mono col-good">T8</td><td>6</td><td>P1</td><td>7</td><td>13</td><td>7</td><td>0</td><td class="col-good">0</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="obs-box"><strong>Averages:</strong> Wait = 19.88 · TAT = 24.88 · Resp = 15.12 · <strong>Critical (T6–T8) Avg Resp = 0.00</strong> · Switches = 3.<br>
+<strong>Observation:</strong> Every critical emergency (T6, T7, T8) is dispatched instantaneously upon arrival. Low-priority T2 waits 37 ticks without aging, demonstrating why priority aging is essential in a live environment.</div>
+
+<!-- 7.4 Round Robin -->
+<h2>7.4 Round Robin Scheduling (Time Quantum Q = 3)</h2>
+<div class="tbl-wrap no-break">
+<table>
+  <thead><tr><th>PID</th><th>AT</th><th>Prio</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr></thead>
+  <tbody>
+    <tr><td class="col-mono">T1</td><td>0</td><td>P4</td><td>8</td><td>31</td><td>31</td><td>23</td><td>0</td></tr>
+    <tr><td class="col-mono">T2</td><td>0</td><td>P8</td><td>3</td><td>6</td><td>6</td><td>3</td><td>3</td></tr>
+    <tr><td class="col-mono">T3</td><td>1</td><td>P6</td><td>4</td><td>28</td><td>27</td><td>23</td><td>5</td></tr>
+    <tr><td class="col-mono">T4</td><td>2</td><td>P7</td><td>3</td><td>12</td><td>10</td><td>7</td><td>7</td></tr>
+    <tr><td class="col-mono">T5</td><td>3</td><td>P5</td><td>4</td><td>29</td><td>26</td><td>22</td><td>9</td></tr>
+    <tr><td class="col-mono">T6</td><td>4</td><td>P3</td><td>5</td><td>33</td><td>29</td><td>24</td><td>14</td></tr>
+    <tr><td class="col-mono">T7</td><td>5</td><td>P2</td><td>6</td><td>36</td><td>31</td><td>25</td><td>16</td></tr>
+    <tr><td class="col-mono col-crit">T8</td><td>6</td><td>P1</td><td>7</td><td>40</td><td>34</td><td>27</td><td class="col-crit">18</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="obs-box"><strong>Averages:</strong> Wait = 19.25 · TAT = 24.25 · Resp = 9.0 · Critical (T6–T8) Avg Resp = 16.0 · Switches = 8.<br>
+<strong>Observation:</strong> Time-slicing improves average response (9.00 ticks) for early arrivals, but forces Cardiac Arrest (T8) to wait 18 ticks for its first CPU slice and finish last at t=40.</div>
+
+<!-- 7.5 EDF -->
+<h2>7.5 Earliest Deadline First (EDF — Real-Time Dynamic Priority)</h2>
+<div class="tbl-wrap no-break">
+<table>
+  <thead><tr><th>PID</th><th>AT</th><th>Prio</th><th>BT</th><th>CT</th><th>TAT</th><th>WT</th><th>RT</th></tr></thead>
+  <tbody>
+    <tr><td class="col-mono">T1</td><td>0</td><td>P4</td><td>8</td><td>26</td><td>26</td><td>18</td><td>0</td></tr>
+    <tr><td class="col-mono">T2</td><td>0</td><td>P8</td><td>3</td><td>40</td><td>40</td><td>37</td><td>37</td></tr>
+    <tr><td class="col-mono">T3</td><td>1</td><td>P6</td><td>4</td><td>34</td><td>33</td><td>29</td><td>29</td></tr>
+    <tr><td class="col-mono">T4</td><td>2</td><td>P7</td><td>3</td><td>37</td><td>35</td><td>32</td><td>32</td></tr>
+    <tr><td class="col-mono">T5</td><td>3</td><td>P5</td><td>4</td><td>30</td><td>27</td><td>23</td><td>23</td></tr>
+    <tr><td class="col-mono col-good">T6</td><td>4</td><td>P3</td><td>5</td><td>9</td><td>5</td><td>0</td><td class="col-good">0</td></tr>
+    <tr><td class="col-mono">T7</td><td>5</td><td>P2</td><td>6</td><td>22</td><td>17</td><td>11</td><td>11</td></tr>
+    <tr><td class="col-mono">T8</td><td>6</td><td>P1</td><td>7</td><td>16</td><td>10</td><td>3</td><td>3</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="obs-box"><strong>Averages:</strong> Wait = 19.12 · TAT = 24.12 · Resp = 16.88 · <strong>Critical (T6–T8) Avg Resp = 4.67</strong> · Switches = 1.<br>
+<strong>Observation:</strong> EDF dynamically prioritises the tightest SLA deadlines, achieving Critical Avg Wait of 4.67 ticks with only 1 context switch — a compelling result for SLA-aware clinical environments.</div>
+
+<!-- 7.6 Comparison -->
+<h2>7.6 Eight-Algorithm Criteria Comparison &amp; Quantum Sensitivity</h2>
+<div class="tbl-wrap no-break">
+<table>
+  <thead>
+    <tr><th>Algorithm</th><th>Avg WT</th><th>Avg TAT</th><th>Avg RT</th><th>Crit WT</th><th>Crit RT</th><th>Switches</th><th>CPU %</th><th>Thru</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>FCFS</td><td>14.12</td><td>19.12</td><td>14.12</td><td>22.33</td><td>22.33</td><td>0</td><td>100%</td><td>0.2/t</td></tr>
+    <tr><td>SJF (Non-Preemptive)</td><td class="col-good">11.0</td><td class="col-good">16.0</td><td>11.0</td><td>14.33</td><td>14.33</td><td>0</td><td>100%</td><td>0.2/t</td></tr>
+    <tr><td>SRTF (Preemptive SJF)</td><td class="col-good">11.0</td><td class="col-good">16.0</td><td>11.0</td><td>14.33</td><td>14.33</td><td>0</td><td>100%</td><td>0.2/t</td></tr>
+    <tr><td>Non-Preemptive Priority</td><td>18.75</td><td>23.75</td><td>18.75</td><td>9.67</td><td>9.67</td><td>0</td><td>100%</td><td>0.2/t</td></tr>
+    <tr style="background:#e8edf5;"><td><strong>Preemptive Priority</strong></td><td>19.88</td><td>24.88</td><td>15.12</td><td>6.67</td><td class="col-good"><strong>0.0</strong></td><td>3</td><td>100%</td><td>0.2/t</td></tr>
+    <tr><td>Round Robin (Q=3)</td><td>19.25</td><td>24.25</td><td>9.0</td><td>25.33</td><td>16.0</td><td>8</td><td>100%</td><td>0.2/t</td></tr>
+    <tr><td>EDF (Real-Time)</td><td>19.12</td><td>24.12</td><td>16.88</td><td class="col-good">4.67</td><td class="col-good">4.67</td><td>1</td><td>100%</td><td>0.2/t</td></tr>
+    <tr><td>MLFQ (3-Level)</td><td>21.88</td><td>26.88</td><td>14.88</td><td>13.0</td><td class="col-good">0.0</td><td>6</td><td>100%</td><td>0.2/t</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="small">Figure 5A. Eight-algorithm scheduling metric comparison. <em>Highlighted row</em> = recommended core policy. CPU utilisation is 100% across all policies on this workload (no idle gaps).</p>
+
+<div class="obs-box">
+  <strong>Round Robin Quantum Sensitivity (Q=1 to 8).</strong> As Q increases from 1 to 8, average waiting time falls
+  from ~21 ticks to ~15 ticks while context switches drop from ~26 to ~3. The knee of the curve sits around Q=3–4,
+  balancing responsiveness against scheduling overhead — the reason Q=3 was selected as the representative value for this analysis.
+</div>
+
+<!-- ══════════════════════ SEC 8: STARVATION ══════════════════════ -->
+<div class="page-break"></div>
+<h1><span class="sec-num">8.</span> Impact of Continuously Arriving Emergencies</h1>
+<p>
+Under strict static Preemptive Priority, a sustained burst of Priority-1 emergencies creates two well-known
+real-time hazards: indefinite starvation of routine tasks (such as OP discharges or planned dialysis transfers)
+and priority inversion when a low-priority task holds a shared availability lock.
+</p>
+
+<div class="tbl-wrap no-break">
+<table>
+  <thead>
+    <tr><th>Phenomenon</th><th>Experimental Setup</th><th>Without Mitigation</th><th>With Redline Mitigation</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Starvation under Continuous P1 Stream</strong></td>
+      <td>P1 arrives every 4 ticks for 120 ticks; P8 arrives at t=1 (BT=2).</td>
+      <td>P8 first dispatch: Starved (&gt;120 ticks)</td>
+      <td>Aging (−1 every 10 ticks) boosts P8 → P1; dispatched at t=72.</td>
+    </tr>
+    <tr>
+      <td><strong>Priority Inversion on Availability Lock</strong></td>
+      <td>P8 holds lock; P1 needs lock at t=2; P4 medium task arrives.</td>
+      <td>P4 preempts P8; P1 delayed 12 ticks (until t=14).</td>
+      <td>Priority Inheritance boosts P8 → P1; P1 unblocked in 2 ticks (t=4).</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- Starvation mini-timeline -->
+<div class="fig-wrap no-break">
+  <p class="text-center small" style="font-weight:bold;margin-bottom:.5rem;">A. Priority Aging Step Curve (Rescuing P8 from Starvation)</p>
+  <svg viewBox="0 0 500 140" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:500px;font-family:Georgia,serif;display:block;margin:0 auto;">
+    <line x1="60" y1="10" x2="60" y2="110" stroke="#bbb" stroke-width="1"/>
+    <line x1="60" y1="110" x2="490" y2="110" stroke="#bbb" stroke-width="1"/>
+    <text x="55" y="15" text-anchor="end" font-size="8" fill="#888">P1</text>
+    <text x="55" y="30" text-anchor="end" font-size="8" fill="#888">P2</text>
+    <text x="55" y="45" text-anchor="end" font-size="8" fill="#888">P3</text>
+    <text x="55" y="60" text-anchor="end" font-size="8" fill="#888">P4</text>
+    <text x="55" y="75" text-anchor="end" font-size="8" fill="#888">P5</text>
+    <text x="55" y="90" text-anchor="end" font-size="8" fill="#888">P7</text>
+    <text x="55" y="105" text-anchor="end" font-size="8" fill="#888">P8</text>
+    <text x="60" y="122" text-anchor="middle" font-size="7" fill="#aaa">0</text>
+    <text x="130" y="122" text-anchor="middle" font-size="7" fill="#aaa">10</text>
+    <text x="200" y="122" text-anchor="middle" font-size="7" fill="#aaa">20</text>
+    <text x="270" y="122" text-anchor="middle" font-size="7" fill="#aaa">30</text>
+    <text x="340" y="122" text-anchor="middle" font-size="7" fill="#aaa">40</text>
+    <text x="410" y="122" text-anchor="middle" font-size="7" fill="#aaa">50</text>
+    <text x="480" y="122" text-anchor="middle" font-size="7" fill="#aaa">60</text>
+    <text x="275" y="134" text-anchor="middle" font-size="7" fill="#aaa">Simulation Time (ticks)</text>
+    <polyline points="60,105 130,105 130,90 200,90 200,75 270,75 270,60 340,60 340,45 410,45 410,30 480,30" fill="none" stroke="#2c4a7c" stroke-width="1.8" stroke-dasharray="4,2"/>
+    <circle cx="410" cy="15" r="4" fill="#2a6632"/>
+    <text x="420" y="12" font-size="8" fill="#2a6632" font-weight="bold">P8 Dispatched (t≈72)</text>
+    <line x1="410" y1="30" x2="410" y2="19" stroke="#2a6632" stroke-width="1" stroke-dasharray="2,1"/>
+    <line x1="60" y1="105" x2="490" y2="105" stroke="#c08080" stroke-width="1" stroke-dasharray="6,3" opacity="0.5"/>
+    <text x="295" y="100" font-size="7" fill="#c08080" opacity="0.8">Without Aging (Starves &gt;120)</text>
+    <line x1="65" y1="135" x2="90" y2="135" stroke="#2c4a7c" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="94" y="137" font-size="7" fill="#555">With Aging (−1 / 10 ticks)</text>
+    <line x1="220" y1="135" x2="245" y2="135" stroke="#c08080" stroke-width="1" stroke-dasharray="6,3"/>
+    <text x="249" y="137" font-size="7" fill="#888">Without Aging</text>
+  </svg>
+  <div class="fig-caption">Figure 6A. Priority aging step curve rescuing P8 from starvation. Each 10-tick interval decrements the effective priority by 1, eventually reaching P1 at approximately t=72.</div>
+</div>
+
+<div class="fig-wrap no-break">
+  <p class="text-center small" style="font-weight:bold;margin-bottom:.5rem;">B. Priority Inversion vs. Priority Inheritance</p>
+  <svg viewBox="0 0 500 90" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:500px;font-family:Georgia,serif;display:block;margin:0 auto;">
+    <text x="130" y="12" text-anchor="middle" font-size="8" fill="#8b3a3a" font-weight="bold">Without Inheritance (Delay = 12t)</text>
+    <rect x="10" y="20" width="50" height="18" rx="2" fill="#e0e0e0" stroke="#bbb"/>
+    <text x="35" y="32" text-anchor="middle" font-size="7" fill="#555">P8 (Lock)</text>
+    <rect x="62" y="20" width="40" height="18" rx="2" fill="#fdf2f2" stroke="#c08080"/>
+    <text x="82" y="32" text-anchor="middle" font-size="7" fill="#8b3a3a">P1 Wait</text>
+    <rect x="104" y="20" width="80" height="18" rx="2" fill="#fff3e0" stroke="#d09050"/>
+    <text x="144" y="32" text-anchor="middle" font-size="7" fill="#7a4a00">P4 Preempts P8 (Inversion!)</text>
+    <rect x="186" y="20" width="30" height="18" rx="2" fill="#e0e0e0" stroke="#bbb"/>
+    <text x="201" y="32" text-anchor="middle" font-size="7" fill="#555">P8</text>
+    <rect x="218" y="20" width="60" height="18" rx="2" fill="#e8edf5" stroke="#2c4a7c"/>
+    <text x="248" y="32" text-anchor="middle" font-size="7" fill="#2c4a7c">P1 Runs (t=14)</text>
+    <text x="130" y="58" text-anchor="middle" font-size="8" fill="#2a6632" font-weight="bold">With Priority Inheritance (Delay = 2t)</text>
+    <rect x="10" y="66" width="50" height="18" rx="2" fill="#e0e0e0" stroke="#bbb"/>
+    <text x="35" y="78" text-anchor="middle" font-size="7" fill="#555">P8 → P1</text>
+    <rect x="62" y="66" width="60" height="18" rx="2" fill="#e8f5ea" stroke="#80b88a"/>
+    <text x="92" y="78" text-anchor="middle" font-size="7" fill="#2a6632">P1 Runs (t=4)</text>
+    <rect x="124" y="66" width="140" height="18" rx="2" fill="#f3f3f3" stroke="#ccc"/>
+    <text x="194" y="78" text-anchor="middle" font-size="7" fill="#888">P4 Runs After P1</text>
+    <text x="440" y="45" font-size="7" fill="#aaa">0    2    4    6    8    10   12   14   16   18 ticks</text>
+  </svg>
+  <div class="fig-caption">Figure 6B. Priority Inheritance eliminating medium-priority interference. P1 is unblocked 10 ticks earlier.</div>
+</div>
+
+<!-- ══════════════════════ SEC 9: SYNC ══════════════════════ -->
+<h1><span class="sec-num">9.</span> Synchronisation, Two-Phase Holds &amp; Deadlock Handling</h1>
+<p>
+Each hospital facility acts as a Counting Semaphore (S = free_units). Checking and decrementing S executes
+inside a Mutex Critical Section coupled with an optimistic version token. Rather than blocking the CPU while
+waiting for a hospital reply, Redline uses a Two-Phase Hold (PREPARE → COMMITTED / ABORTED / EXPIRED)
+and supports Top-N Parallel Referral where the first hospital to accept commits its hold and atomically releases
+all sibling holds.
+</p>
+<div class="obs-box">
+  <strong>Concurrency Race Proof (1,000 Trials).</strong> Without mutex protection, 692 of 1,000 concurrent last-bed
+  reservation attempts result in double-bookings. With the threading.Lock mutex and compare-and-swap version token
+  in place, this figure drops to 0 of 1,000 — a complete elimination of the race condition under test conditions.
+</div>
+
+<!-- Race bar mini-chart -->
+<div class="fig-wrap no-break" style="display:flex;gap:2rem;justify-content:center;align-items:flex-end;margin:1rem 0;">
+  <div style="text-align:center;">
+    <div style="width:80px;height:138px;background:#fdf2f2;border:1px solid #c08080;border-radius:3px 3px 0 0;display:flex;align-items:flex-end;justify-content:center;">
+      <div style="font-size:10pt;font-weight:bold;color:#8b3a3a;margin-bottom:.3rem;">692</div>
+    </div>
+    <div style="font-size:7.5pt;color:#888;margin-top:.3rem;">Without Mutex<br>(Unsafe Check-Then-Act)</div>
+  </div>
+  <div style="text-align:center;">
+    <div style="width:80px;height:20px;background:#e8f5ea;border:1px solid #80b88a;border-radius:3px 3px 0 0;display:flex;align-items:center;justify-content:center;">
+      <div style="font-size:10pt;font-weight:bold;color:#2a6632;">0</div>
+    </div>
+    <div style="font-size:7.5pt;color:#888;margin-top:.3rem;">With Mutex Lock<br>(Atomic Critical Section)</div>
+  </div>
+</div>
+<p class="text-center small fig-caption">Figure 7. 1,000-trial race test proving 0 double-bookings with mutex. Y-axis = double-bookings out of 1,000 trials.</p>
+
+<!-- 9.1 Deadlock -->
+<h2>9.1 Deadlock Prevention, RAG Detection &amp; Banker's Safe-State Check</h2>
+<p>
+When a critical patient requires both an ICU Bed (R1) and a Ventilator (R2), unconstrained acquisition
+can satisfy all four Coffman conditions (Mutual Exclusion, Hold-and-Wait, No Preemption, Circular Wait).
+Redline layers three defences:
+</p>
+<ul style="padding-left:1.4rem;color:var(--ink-soft);font-size:9.5pt;line-height:1.9;">
+  <li><strong>Global Resource Ordering</strong> (ICU → Emergency → Ventilator → Neuro → Specialist) — breaks the Circular Wait condition outright.</li>
+  <li><strong>Resource Allocation Graph (RAG) Cycle Detection</strong> — releases the lowest-priority victim when a cycle is detected.</li>
+  <li><strong>Banker's Algorithm Safe-State Verification</strong> — demonstrated on Hospital B: Total=[3,2,1], Available=[1,1,0].</li>
+</ul>
+
+<div class="tbl-wrap no-break">
+<table>
+  <thead>
+    <tr><th>Hospital B Request</th><th>Allocation [ICU, Vent, Spec]</th><th>Max Need</th><th>Remaining Need</th><th>Banker's Safe-State Decision</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Req-A (Cardiac)</strong></td><td class="col-mono">[1, 0, 0]</td><td class="col-mono">[1, 0, 0]</td><td class="col-mono">[0, 0, 0]</td>
+      <td>Finishes first; releases [1, 0, 0]</td>
+    </tr>
+    <tr>
+      <td><strong>Req-B (Trauma)</strong></td><td class="col-mono">[1, 1, 0]</td><td class="col-mono">[1, 2, 0]</td><td class="col-mono">[0, 1, 0]</td>
+      <td><span class="badge badge-pass">GRANTED</span> Request [0,1,0] → Safe sequence A→B→C</td>
+    </tr>
+    <tr>
+      <td><strong>Req-C (Stroke)</strong></td><td class="col-mono">[0, 0, 1]</td><td class="col-mono">[1, 2, 1]</td><td class="col-mono">[1, 2, 0]</td>
+      <td><span class="badge badge-hard">DENIED</span> Request [0,1,0] → Unsafe; risks deadlock</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<div class="fig-caption">Figure 8. Banker's Algorithm safe-state verification for Hospital B. Req-B is granted (safe sequence A→B→C exists); Req-C is denied because granting it would leave no safe completion sequence.</div>
+
+<!-- ══════════════════════ SEC 10: HYBRID ══════════════════════ -->
+<div class="page-break"></div>
+<h1><span class="sec-num">10.</span> Proposed Hybrid Policy &amp; Expected OS Behaviour</h1>
+<p>
+Redline adopts a hybrid <strong>Preemptive Priority + Aging (−1 per 10 ticks)</strong> kernel paired with
+<strong>EDF Real-Time SLA Deadline Monitoring</strong> during normal operations, and switches Priority-1 emergencies
+to <strong>Surge FIFO + Capacity Load Balancing</strong> (suspending P1 aging and skipping stale nodes) during
+mass-casualty surges.
+</p>
+
+<div class="tbl-wrap no-break">
+<table>
+  <thead>
+    <tr><th>Expected OS Behaviour Question</th><th>Verified Kernel Response in Redline</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>1. Which process should execute?</strong></td>
+      <td>The highest-priority READY process (or earliest-deadline task under EDF) immediately preempts any lower-priority running task.</td>
+    </tr>
+    <tr>
+      <td><strong>2. Which process should wait?</strong></td>
+      <td>Preempted routine tasks return to READY; referrals awaiting hospital confirmation enter WAITING without blocking the CPU.</td>
+    </tr>
+    <tr>
+      <td><strong>3. How are resources allocated?</strong></td>
+      <td>The matcher filters free semaphores, ranks hospitals by ETA/Trust/Freshness/Load, and locks resources in fixed global order.</td>
+    </tr>
+    <tr>
+      <td><strong>4. How is synchronisation maintained?</strong></td>
+      <td>Mutex guards wait(S)/signal(S) critical sections; optimistic version tokens reject stale edits with HTTP 409.</td>
+    </tr>
+    <tr>
+      <td><strong>5. How does it recover from failure?</strong></td>
+      <td>TTL expiry workers abort timed-out holds, restore S, and escalate; the RAG cycle detector preempts the lowest-priority victim.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ══════════════════════ SEC 11: PROTOTYPE ══════════════════════ -->
+<h1><span class="sec-num">11.</span> Prototype Implementation, 5 Test Cases &amp; Pytest (19/19)</h1>
+<p>
+The full-stack Flask + OS Engine prototype provides <strong>9 operational screens + Style Guide</strong> (Light/Dark
+Liquid Glass UI, EN/HI/KN i18n, RBAC switcher), including an interactive Live Kernel Stepper, Custom
+Process Builder, SVG Gantt &amp; Quantum Sensitivity Lab, and CSV Report Export.
+</p>
+
+<div class="tbl-wrap no-break">
+<table>
+  <thead>
+    <tr><th>Case</th><th>Hospital Scenario</th><th>Best Algorithm</th><th>Measured Result</th><th>Engineering Rationale</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Case 1</strong></td>
+      <td>Cardiac Arrest Interrupts Routine Queue</td>
+      <td>Preemptive Priority</td>
+      <td>Critical Response: 0 ticks (vs 9 ticks in FCFS)</td>
+      <td>Pre-empts running routine work immediately so life-critical cases suffer zero dispatch delay.</td>
+    </tr>
+    <tr>
+      <td><strong>Case 2</strong></td>
+      <td>All-Routine Equal-Urgency Batch (OP / Lab / Pharmacy)</td>
+      <td>SJF (Non-Preemptive)</td>
+      <td>Avg Wait: 4.0 ticks (vs 8.5 ticks in FCFS)</td>
+      <td>When all tasks share non-critical priority, running shortest jobs first minimises overall waiting time.</td>
+    </tr>
+    <tr>
+      <td><strong>Case 3</strong></td>
+      <td>Interactive Enquiries Behind a Large Record Sync</td>
+      <td>Round Robin (Q=3)</td>
+      <td>Avg Response: 1.67 ticks (vs 6.33 ticks in FCFS)</td>
+      <td>Time-slicing prevents short interactive enquiries from stalling behind a long batch job.</td>
+    </tr>
+    <tr>
+      <td><strong>Case 4</strong></td>
+      <td>Mass-Casualty Surge (20 Priority-1 Arrivals)</td>
+      <td>Surge FIFO + Load Balancing</td>
+      <td>20/20 P1 requests spread across 5 hospitals</td>
+      <td>Equal-priority emergencies use FIFO order while capacity-based routing avoids overloading any single hospital.</td>
+    </tr>
+    <tr>
+      <td><strong>Case 5</strong></td>
+      <td>Continuous Emergencies + Planned Dialysis (Starvation)</td>
+      <td>Preemptive Priority + Aging (−1 / 10 ticks)</td>
+      <td>Dialysis dispatched at t=72 (vs starved without aging)</td>
+      <td>Aging gradually boosts waiting routine tasks so they never starve under sustained emergency load.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Pytest Verification Summary (19/19 Passed)</h2>
+<div class="tbl-wrap no-break">
+<table class="test-row">
+  <thead>
+    <tr><th>Test Suite ID</th><th>Automated Pytest Verification Scope</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="col-mono">T1</td><td>100×2 concurrent thread last-bed reservation (0 double-bookings)</td><td><span class="badge badge-pass">PASSED</span></td></tr>
+    <tr><td class="col-mono">T2–T3</td><td>Priority preemption (P1 interrupts P7) &amp; aging under continuous P1 stream</td><td><span class="badge badge-pass">PASSED</span></td></tr>
+    <tr><td class="col-mono">T4–T5</td><td>Hold TTL timeout escalation &amp; parallel referral first-accept-wins</td><td><span class="badge badge-pass">PASSED</span></td></tr>
+    <tr><td class="col-mono">T6 &amp; RAG</td><td>Banker's safe-state check (Hospital B) &amp; RAG cycle victim recovery</td><td><span class="badge badge-pass">PASSED</span></td></tr>
+    <tr><td class="col-mono">T7–T12</td><td>409 version conflict, stale ranking, duplicate PAT, RBAC/break-glass, 10 UI routes, surge</td><td><span class="badge badge-pass">PASSED</span></td></tr>
+    <tr><td class="col-mono">Extended</td><td>8-algorithm benchmark, 10-process clinical mix, EDF deadline SLA, Quantum sweep, CSV export</td><td><span class="badge badge-pass">PASSED (19/19)</span></td></tr>
+  </tbody>
+</table>
+</div>
+<p class="small">Figure 9. All 19 automated pytest cases passed. The extended suite covers the full 8-algorithm benchmark and 10-process clinical mix.</p>
+
+<!-- ══════════════════════ SEC 12–14 ══════════════════════ -->
+<div class="page-break"></div>
+<h1><span class="sec-num">12.</span> Recommended Additional Features</h1>
+<ul style="padding-left:1.4rem;color:var(--ink-soft);font-size:9.5pt;line-height:2;">
+  <li><strong>Multi-Core SMP Hospital CPU Scheduling.</strong> Extend the single-CPU scheduler to N-core symmetric multiprocessing with dedicated core affinity for Emergency Triage, ICU Telemetry, and Lab Processing.</li>
+  <li><strong>Rate Monotonic Scheduling (RMS) for Periodic ICU Vitals.</strong> Model continuous ECG/SpO2/ventilator polling as periodic tasks (Ci, Ti) with Liu–Layland utilisation bound checks.</li>
+  <li><strong>Persistent SQLite (WAL Mode) + Server-Sent Events (SSE).</strong> Replace in-memory state with concurrent WAL-mode SQLite persistence and real-time SSE push updates across dispatch terminals.</li>
+  <li><strong>Road-Network Dijkstra/A* Ambulance Routing.</strong> Upgrade Haversine ETA to graph-based shortest-path routing weighted by live Bengaluru traffic multipliers.</li>
+  <li><strong>Real-Time EDF Admission Control &amp; HL7/FHIR Stubs.</strong> Shed or defer non-critical OP tasks when CPU utilisation threatens hard real-time deadlines, and expose FHIR ServiceRequest payloads.</li>
+</ul>
+
+<h1><span class="sec-num">13.</span> Conclusion</h1>
+<p>
+Redline (HEMS-Link) demonstrates that hospital emergency management and multi-hospital coordination map
+directly onto core Operating Systems abstractions. Evaluating eight scheduling policies confirms that overall
+average waiting time alone is clinically deceptive: SJF minimises aggregate wait (11.00 ticks) while
+delaying a cardiac arrest until t=25, whereas Preemptive Priority delivers 0.00-tick critical response.
+</p>
+<p>
+When combined with Aging (−1 per 10 ticks), EDF SLA monitoring, mutex-protected two-phase holds,
+Banker's algorithm checks, and RAG deadlock recovery, Redline guarantees responsiveness, fairness,
+and deadlock safety across all evaluated scenarios — while leaving final clinical judgement where it belongs:
+with the receiving hospital staff.
+</p>
+
+<h1><span class="sec-num">14.</span> References</h1>
+<ol class="ref-list">
+  <li>Silberschatz, A., Galvin, P. B., &amp; Gagne, G. — <em>Operating System Concepts</em>, 10th ed., Wiley, 2018.</li>
+  <li>Tanenbaum, A. S. — <em>Modern Operating Systems</em>, 4th ed., Pearson, 2015.</li>
+  <li>Coffman, E. G., Elphick, M. J., &amp; Shoshani, A. — "System Deadlocks," <em>ACM Computing Surveys</em>, 3(2), 1971.</li>
+  <li>Liu, C. L., &amp; Layland, J. W. — "Scheduling Algorithms for Multiprogramming in a Hard-Real-Time Environment," <em>JACM</em>, 20(1), 1973.</li>
+  <li>Dijkstra, E. W. — "Cooperating Sequential Processes," Technical Report EWD123, 1965.</li>
+  <li>IEEE Std 1003.1 (POSIX) — Interfaces for Semaphores, Mutexes, and Message Queues.</li>
+</ol>
+
+<div class="page-footer">
+  Academic Prototype &nbsp;·&nbsp; Simulated Hospital Data &nbsp;·&nbsp; Decision Support Only<br>
+  REDLINE (HEMS-Link) — OS Case Study 2 (25PCCS201) &nbsp;·&nbsp; Jain (Deemed-to-be) University
+</div>
+
+</body>
+</html>
