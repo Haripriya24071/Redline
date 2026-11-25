@@ -19,7 +19,7 @@
         </span>
       </a>
 
-      <nav class="nav-pills" aria-label="Primary navigation">
+      <nav class="nav-pills" aria-label="Primary navigation" style="margin-left:auto;">
         <a class="nav-pill {{ 'active' if active_page == 'dashboard' }}" href="{{ url_for('screen_dashboard') }}" data-i18n="nav_dispatch">1. Patient Dispatch</a>
         <a class="nav-pill {{ 'active' if active_page == 'monitor' }}" href="{{ url_for('screen_monitor') }}" data-i18n="nav_kernel">2. OS Kernel &amp; Math</a>
         <a class="nav-pill {{ 'active' if active_page == 'availability' }}" href="{{ url_for('screen_availability') }}" data-i18n="nav_beds">3. Bed Board</a>
