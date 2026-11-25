@@ -2,9 +2,12 @@
 window.HEMS_I18N = {
   en: {
     brand_sub: "Kanakapura → Bengaluru Network",
-    nav_dispatch: "1. Patient Dispatch",
-    nav_kernel: "2. OS Kernel & Math",
-    nav_beds: "3. Bed Board",
+    nav_dispatch: "1. Dispatch",
+    nav_kernel: "2. OS Kernel & Lab",
+    nav_analytics: "3. Analytics",
+    nav_beds: "4. Bed Board",
+    nav_surge: "5. Surge",
+    nav_tracker: "6. Tracker",
     sim_notice: "Redline Academic Prototype • Real Nearby Locations with Simulated Bed Counts • Decision Support Only",
     reset_btn: "Reset",
 
@@ -35,9 +38,12 @@ window.HEMS_I18N = {
   },
   hi: {
     brand_sub: "कनकपुरा → बेंगलुरु नेटवर्क",
-    nav_dispatch: "1. रोगी डिस्पैच",
-    nav_kernel: "2. ओएस कर्नेल और गणित",
-    nav_beds: "3. बेड बोर्ड",
+    nav_dispatch: "1. डिस्पैच",
+    nav_kernel: "2. ओएस कर्नेल",
+    nav_analytics: "3. विश्लेषण",
+    nav_beds: "4. बेड बोर्ड",
+    nav_surge: "5. सर्ज मोड",
+    nav_tracker: "6. ट्रैकर",
     sim_notice: "रेडलाइन शैक्षणिक प्रोटोटाइप • सिम्युलेटेड बेड डेटा • केवल निर्णय सहायता",
     reset_btn: "रीसेट",
 
@@ -68,9 +74,12 @@ window.HEMS_I18N = {
   },
   kn: {
     brand_sub: "ಕನಕಪುರ → ಬೆಂಗಳೂರು ನೆಟ್‌ವರ್ಕ್",
-    nav_dispatch: "1. ರೋಗಿ ರವಾನೆ",
-    nav_kernel: "2. OS ಕರ್ನಲ್ ಮತ್ತು ಗಣಿತ",
-    nav_beds: "3. ಹಾಸಿಗೆ ಬೋರ್ಡ್",
+    nav_dispatch: "1. ರವಾನೆ",
+    nav_kernel: "2. OS ಕರ್ನಲ್",
+    nav_analytics: "3. ವಿಶ್ಲೇಷಣೆ",
+    nav_beds: "4. ಹಾಸಿಗೆ ಬೋರ್ಡ್",
+    nav_surge: "5. ಸರ್ಜ್ ಮೋಡ್",
+    nav_tracker: "6. ಟ್ರ್ಯಾಕರ್",
     sim_notice: "ರೆಡ್‌ಲೈನ್ ಶೈಕ್ಷಣಿಕ ಮಾದರಿ • ಸಿಮ್ಯುಲೇಟೆಡ್ ಹಾಸಿಗೆ ಡೇಟಾ • ನಿರ್ಧಾರ ಬೆಂಬಲ ಮಾತ್ರ",
     reset_btn: "ಮರುಹೊಂದಿಸಿ",
 

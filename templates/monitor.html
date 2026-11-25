@@ -2,58 +2,177 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <h1 class="page-title" data-i18n="p2_title">2. OS Kernel &amp; Step-by-Step Math</h1>
-    <p class="page-desc" data-i18n="p2_desc">See how every patient from Screen 1 is handled by OS Processes, CPU Scheduling, Semaphores, Mutex, and Deadlock Avoidance.</p>
+    <h1 class="page-title" data-i18n="p2_title">2. OS Kernel &amp; Scheduling Workbench</h1>
+    <p class="page-desc" data-i18n="p2_desc">Step through the live kernel, compare 8 CPU &amp; Real-Time scheduling algorithms, build custom workloads, and inspect Deadlock/Mutex proofs.</p>
   </div>
-  <a class="keycap-btn keycap-white" href="{{ url_for('screen_dashboard') }}" data-i18n="p2_back">← Back to Dispatch</a>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a class="keycap-btn keycap-white keycap-sm" id="export-csv-btn" href="/api/export/csv?workload=live">Export CSV</a>
+    <a class="keycap-btn keycap-white keycap-sm" href="{{ url_for('screen_analytics') }}">Analytics Lab →</a>
+    <a class="keycap-btn keycap-white keycap-sm" href="{{ url_for('screen_dashboard') }}" data-i18n="p2_back">← Dispatch</a>
+  </div>
 </div>
 
-<!-- 1. All Live Processes (PCBs) -->
-<section class="glass glass-card" style="margin-bottom:22px;">
-  <h2 style="margin-top:0; font-size:18px;" data-i18n="p2_sec1">Topic A • Process Management (5-State Model: NEW → READY → RUNNING → WAITING → TERMINATED)</h2>
-  <table class="glass-table">
-    <thead>
-      <tr><th>PID</th><th>Patient / Process</th><th>Arrival (AT)</th><th>Priority</th><th>Burst (BT)</th><th>Current State</th></tr>
-    </thead>
-    <tbody id="pcb-body"></tbody>
-  </table>
+<!-- Live Kernel Telemetry Strip -->
+<section class="kpi-strip" aria-label="Live Kernel Telemetry">
+  <div class="glass kpi-tile">
+    <span class="kpi-label">Kernel Clock &amp; Running PCB</span>
+    <span id="kern-clock" class="kpi-value">t = 0</span>
+    <span id="kern-running" class="kpi-sub">CPU Idle</span>
+  </div>
+  <div class="glass kpi-tile">
+    <span class="kpi-label">CPU Utilization</span>
+    <span id="kern-util" class="kpi-value" style="color:var(--status-ok);">0%</span>
+    <span id="kern-switches" class="kpi-sub">Context switches: 0</span>
+  </div>
+  <div class="glass kpi-tile">
+    <span class="kpi-label">Ready / Waiting Queues</span>
+    <span id="kern-queues" class="kpi-value">0 / 0</span>
+    <span id="kern-policy-lbl" class="kpi-sub">Policy: Preemptive Priority</span>
+  </div>
+  <div class="glass kpi-tile">
+    <span class="kpi-label">Hospital Subsystems Loaded</span>
+    <span id="kern-cats" class="kpi-value">—</span>
+    <span id="kern-cats-sub" class="kpi-sub">Emergency • ICU • Lab • OP • Pharm</span>
+  </div>
 </section>
 
-<!-- 2. Live 4-Algorithm Calculations + Gantt Charts -->
+<!-- Topic A: Live OS Kernel Stepper & 5-State Process Management -->
 <section class="glass glass-card" style="margin-bottom:22px;">
-  <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px;">
+  <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;">
+    <h2 style="margin:0; font-size:18px;" data-i18n="p2_sec1">Topic A • Process Management (5-State Model &amp; Live Kernel Stepper)</h2>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+      <select id="live-policy-select" class="glass-select compact-select" onchange="changeLivePolicy()">
+        <option value="preemptive_priority">Preemptive Priority + Aging</option>
+        <option value="mlfq">MLFQ (3-Level)</option>
+        <option value="edf">EDF (Real-Time Deadline)</option>
+        <option value="srtf">SRTF (Preemptive SJF)</option>
+        <option value="round_robin">Round Robin</option>
+        <option value="sjf">SJF (Non-Preemptive)</option>
+        <option value="fcfs">FCFS</option>
+      </select>
+      <button type="button" class="keycap-btn keycap-blue keycap-sm" onclick="kernelControl('step')">Step +1 Tick</button>
+      <button type="button" class="keycap-btn keycap-lime keycap-sm" onclick="kernelControl('run_5')">Run +5 Ticks</button>
+      <button type="button" id="autoplay-btn" class="keycap-btn keycap-white keycap-sm" onclick="toggleAutoPlay()">▶ Auto-Play</button>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:14px;">
+    <div style="overflow-x:auto;">
+      <table class="glass-table" style="font-size:13px;">
+        <thead>
+          <tr><th>PID</th><th>Hospital Activity</th><th>Subsystem</th><th>AT</th><th>Prio (Eff)</th><th>Rem / BT</th><th>DL</th><th>State</th></tr>
+        </thead>
+        <tbody id="pcb-body"></tbody>
+      </table>
+    </div>
+
+    <div style="padding:14px; border-radius:14px; background:rgba(255,255,255,0.16); border:1px solid var(--glass-border);">
+      <strong style="display:block; font-size:14px; margin-bottom:8px;">Live Kernel Execution Trace &amp; Decisions</strong>
+      <div id="kernel-decisions" style="font-family:var(--font-mono); font-size:12px; max-height:240px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Topic B: Interactive CPU & Real-Time Scheduling Workbench -->
+<section class="glass glass-card" style="margin-bottom:22px;">
+  <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;">
     <div>
-      <h2 style="margin:0; font-size:18px;" data-i18n="p2_sec2">Topic B • CPU Scheduling &amp; Calculations (FCFS vs SJF vs Preemptive Priority vs Round Robin)</h2>
+      <h2 style="margin:0; font-size:18px;" data-i18n="p2_sec2">Topic B • CPU &amp; Real-Time Scheduling Workbench (8 Algorithms)</h2>
       <p style="margin:4px 0 0; font-size:12px; color:var(--text-secondary); font-family:var(--font-mono);">
-        Formulas: Turnaround (TAT) = Completion − Arrival &nbsp;|&nbsp; Waiting (WT) = TAT − Burst &nbsp;|&nbsp; Response (RT) = First Dispatch − Arrival
+        TAT = CT − AT &nbsp;|&nbsp; WT = TAT − BT &nbsp;|&nbsp; RT = First Dispatch − AT &nbsp;|&nbsp; Slack = Deadline − CT
       </p>
     </div>
-    <div style="display:flex; flex-wrap:wrap; gap:8px;">
-      <button type="button" class="keycap-btn keycap-blue keycap-sm" onclick="showAlgo('preemptive_priority')">Preemptive Priority</button>
-      <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="showAlgo('fcfs')">FCFS</button>
-      <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="showAlgo('sjf')">SJF</button>
-      <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="showAlgo('round_robin')">Round Robin (Q=3)</button>
-      <button type="button" class="keycap-btn keycap-lime keycap-sm" onclick="showAlgo('all')">Show All 4</button>
+  </div>
+
+  <!-- Workload + Tuning Bar -->
+  <div class="control-bar">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <label for="workload-select" style="font-size:12px; font-weight:700;">Workload:</label>
+      <select id="workload-select" class="glass-select compact-select" onchange="onWorkloadChange()">
+        <option value="live">Live System Queue (8+ Hospital Processes)</option>
+        <option value="case_study">Case Study Baseline (8 Processes T1–T8)</option>
+        <option value="hospital10">Full Hospital Load (10 Processes H1–H10)</option>
+        <option value="custom">Custom Process Builder</option>
+      </select>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:8px;">
+      <label for="quantum-slider" style="font-size:12px; font-weight:700;">RR Quantum Q = <span id="quantum-val">3</span></label>
+      <input id="quantum-slider" class="range-slider" type="range" min="1" max="8" value="3" oninput="document.getElementById('quantum-val').textContent=this.value" onchange="reloadAlgorithms()">
+    </div>
+
+    <div style="display:flex; align-items:center; gap:8px;">
+      <label for="aging-slider" style="font-size:12px; font-weight:700;">Aging Interval = <span id="aging-val">10</span></label>
+      <input id="aging-slider" class="range-slider" type="range" min="0" max="20" step="2" value="10" oninput="document.getElementById('aging-val').textContent=this.value" onchange="reloadAlgorithms()">
     </div>
   </div>
-  <div id="algo-container" style="display:flex; flex-direction:column; gap:20px; margin-bottom:18px;"></div>
 
-  <div style="padding:14px; border-radius:14px; background:rgba(255,255,255,0.22); border:1px solid var(--glass-border);">
-    <strong style="display:block; margin-bottom:8px; font-size:14px;">Algorithm Comparison Summary (Live Workload)</strong>
-    <table class="glass-table" style="font-size:13px;">
-      <thead>
-        <tr><th>Algorithm</th><th>Avg Wait</th><th>Avg Turnaround</th><th>Avg Response</th><th>Critical Response (P1–P3)</th><th>Context Switches</th></tr>
-      </thead>
-      <tbody id="algo-summary-body"></tbody>
-    </table>
+  <!-- Custom Process Builder Panel (hidden unless workload == custom) -->
+  <div id="custom-builder" style="display:none; padding:14px; border-radius:14px; background:rgba(255,255,255,0.18); border:1px solid var(--glass-border); margin-bottom:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+      <strong style="font-size:14px;">Custom Hospital Activity Process Builder</strong>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="seedCustomFromPreset()">Load 10-Process Template</button>
+        <button type="button" class="keycap-btn keycap-lime keycap-sm" onclick="runCustomSimulation()">Run All 8 Algorithms</button>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap:8px; margin-bottom:10px;">
+      <input id="cp-name" class="glass-input" placeholder="Activity Name" value="Emergency ICU">
+      <select id="cp-cat" class="glass-select">
+        <option value="Emergency">Emergency</option>
+        <option value="ICU Monitoring">ICU Monitoring</option>
+        <option value="Laboratory">Laboratory</option>
+        <option value="OP Patient">OP Patient</option>
+        <option value="Pharmacy">Pharmacy</option>
+      </select>
+      <input id="cp-at" type="number" min="0" class="glass-input" placeholder="Arrival" value="0" title="Arrival Time">
+      <input id="cp-prio" type="number" min="1" max="8" class="glass-input" placeholder="Priority 1-8" value="1" title="Priority (1=highest)">
+      <input id="cp-bt" type="number" min="1" max="30" class="glass-input" placeholder="Burst" value="4" title="Burst Time">
+      <input id="cp-dl" type="number" min="1" max="100" class="glass-input" placeholder="Deadline" value="8" title="Deadline tick">
+      <button type="button" class="keycap-btn keycap-blue keycap-sm" onclick="addCustomProc()">+ Add Process</button>
+    </div>
+    <div id="custom-list" style="display:flex; flex-wrap:wrap; gap:6px; font-family:var(--font-mono); font-size:12px;"></div>
+  </div>
+
+  <!-- Algorithm Selector Buttons -->
+  <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;" id="algo-btn-bar">
+    <button type="button" class="keycap-btn keycap-blue keycap-sm" onclick="showAlgo('preemptive_priority', this)">Preemptive Priority</button>
+    <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="showAlgo('fcfs', this)">FCFS</button>
+    <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="showAlgo('sjf', this)">SJF</button>
+    <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="showAlgo('srtf', this)">SRTF (Preemptive)</button>
+    <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="showAlgo('non_preemptive_priority', this)">Priority (Non-Preemptive)</button>
+    <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="showAlgo('round_robin', this)">Round Robin</button>
+    <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="showAlgo('edf', this)">EDF (Real-Time)</button>
+    <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="showAlgo('mlfq', this)">MLFQ</button>
+    <button type="button" class="keycap-btn keycap-lime keycap-sm" onclick="showAlgo('all', this)">Compare All 8</button>
+  </div>
+
+  <div id="algo-container" style="display:flex; flex-direction:column; gap:18px; margin-bottom:20px;"></div>
+
+  <!-- Visual SVG Chart + Full Summary Table -->
+  <div class="grid-2" style="align-items:start;">
+    <div style="padding:14px; border-radius:14px; background:rgba(255,255,255,0.18); border:1px solid var(--glass-border); overflow-x:auto;">
+      <strong style="display:block; margin-bottom:8px; font-size:14px;">Algorithm Criteria Comparison (All 8 Algorithms)</strong>
+      <table class="glass-table" style="font-size:12px;">
+        <thead>
+          <tr><th>Algorithm</th><th>Avg WT</th><th>Avg TAT</th><th>Crit RT</th><th>SLA %</th><th>CPU %</th><th>Switches</th></tr>
+        </thead>
+        <tbody id="algo-summary-body"></tbody>
+      </table>
+    </div>
+
+    <div style="padding:14px; border-radius:14px; background:rgba(255,255,255,0.18); border:1px solid var(--glass-border);">
+      <strong style="display:block; margin-bottom:8px; font-size:14px;">Visual Comparison: Avg Wait vs Avg Turnaround vs Critical Response</strong>
+      <div class="svg-chart-wrap" id="algo-svg-chart"></div>
+    </div>
   </div>
 </section>
 
-<!-- 3. Semaphores, Mutex & IPC Holds -->
+<!-- Topic C & D: Semaphores & Mutex -->
 <section class="grid-2" style="margin-bottom:22px;">
   <div class="glass glass-card">
     <h2 style="margin-top:0; font-size:18px;" data-i18n="p2_sec3">Topic C • Counting Semaphores (S = Free Beds)</h2>
-    <table class="glass-table">
+    <table class="glass-table" style="font-size:13px;">
       <thead><tr><th>Hospital</th><th>ICU (S)</th><th>Vent (S)</th><th>Emerg (S)</th></tr></thead>
       <tbody id="sem-body"></tbody>
     </table>
@@ -65,7 +184,7 @@
   </div>
 </section>
 
-<!-- 4. Banker's Algorithm & Live Experimental Proof -->
+<!-- Topic E & F: Banker's, Deadlock RAG SVG & Experimental Proofs -->
 <section class="grid-2" style="margin-bottom:22px;">
   <div class="glass glass-card">
     <h2 style="margin-top:0; font-size:18px;" data-i18n="p2_sec5">Topic E • Deadlock Avoidance (Banker's Algorithm)</h2>
@@ -73,14 +192,27 @@
   </div>
 
   <div class="glass glass-card">
-    <h2 style="margin-top:0; font-size:18px;" data-i18n="p2_sec6">Topic F • Experimental Proof (Race Condition &amp; Deadlock)</h2>
+    <h2 style="margin-top:0; font-size:18px;" data-i18n="p2_sec6">Topic F • Resource Allocation Graph (RAG) &amp; Proofs</h2>
+    <div id="rag-svg-wrap" style="margin-bottom:12px;"></div>
     <div id="auto-proofs" style="font-size:13px; display:flex; flex-direction:column; gap:10px;">Running live checks...</div>
   </div>
 </section>
 
-<!-- 5. 5 Algorithm Test Cases -->
+<!-- Topic G: Real-Time Priority Inheritance & Aging Proof Visuals -->
+<section class="grid-2" style="margin-bottom:22px;">
+  <div class="glass glass-card">
+    <h2 style="margin-top:0; font-size:18px;">Real-Time Concept • Priority Inheritance (P1 vs P4 vs P8)</h2>
+    <div id="pi-proof" style="font-size:12px;"></div>
+  </div>
+  <div class="glass glass-card">
+    <h2 style="margin-top:0; font-size:18px;">Starvation Prevention • Aging Boost Curve</h2>
+    <div id="aging-chart-wrap" style="font-size:12px;"></div>
+  </div>
+</section>
+
+<!-- Topic H: 5 Hospital Test Cases -->
 <section class="glass glass-card">
-  <h2 style="margin-top:0; font-size:18px;">Topic G • 5 Hospital Test Cases (Which Algorithm Wins When?)</h2>
+  <h2 style="margin-top:0; font-size:18px;">Topic H • 5 Hospital Test Cases (Which Algorithm Wins When?)</h2>
   <table class="glass-table" style="font-size:13px;">
     <thead>
       <tr><th>Case</th><th>Scenario</th><th>Best Algorithm</th><th>Measured Result</th><th>Why It Wins</th></tr>
@@ -94,15 +226,32 @@
 <script>
 let monitorData = null;
 let selectedAlgo = "preemptive_priority";
+let autoPlayTimer = null;
+let customProcesses = [];
 
 const ALGO_TITLES = {
   preemptive_priority: "Preemptive Priority Scheduling (Recommended • With Aging)",
+  non_preemptive_priority: "Non-Preemptive Priority Scheduling",
   fcfs: "First Come First Served (FCFS)",
   sjf: "Shortest Job First (SJF — Non-Preemptive)",
-  round_robin: "Round Robin (Time Quantum Q = 3)",
+  srtf: "Shortest Remaining Time First (SRTF — Preemptive SJF)",
+  round_robin: "Round Robin (Time-Sliced)",
+  edf: "Earliest Deadline First (EDF — Real-Time Dynamic Priority)",
+  mlfq: "Multi-Level Feedback Queue (MLFQ • 3 Levels)",
 };
 
-const PALETTE = ["#2563eb", "#65a30d", "#e11d48", "#d97706", "#0891b2", "#7c3aed", "#059669", "#db2777"];
+const ALGO_ORDER = [
+  "preemptive_priority",
+  "fcfs",
+  "sjf",
+  "srtf",
+  "non_preemptive_priority",
+  "round_robin",
+  "edf",
+  "mlfq",
+];
+
+const PALETTE = ["#2563eb", "#65a30d", "#e11d48", "#d97706", "#0891b2", "#7c3aed", "#059669", "#db2777", "#4f46e5", "#0d9488"];
 
 function renderAlgoBlock(key, algo) {
   if (!algo) return "";
@@ -110,18 +259,39 @@ function renderAlgoBlock(key, algo) {
   const pidColors = {};
   (algo.rows || []).forEach((r, idx) => { pidColors[r.pid] = PALETTE[idx % PALETTE.length]; });
 
-  const ganttHtml = (algo.gantt || []).map((seg) => {
-    const widthPct = Math.max(4, ((seg.end - seg.start) / totalEnd) * 100);
+  // Build Gantt segments (including IDLE gaps if any)
+  let cursor = 0;
+  const segs = [];
+  (algo.gantt || []).forEach((seg) => {
+    if (seg.start > cursor) {
+      segs.push({ pid: "IDLE", start: cursor, end: seg.start, idle: true });
+    }
+    segs.push(seg);
+    cursor = seg.end;
+  });
+
+  const ganttHtml = segs.map((seg) => {
+    const widthPct = Math.max(3, ((seg.end - seg.start) / totalEnd) * 100);
+    const bg = seg.idle ? "rgba(100,116,139,0.55)" : (pidColors[seg.pid] || "#2563eb");
     return `
-      <div title="${seg.pid}: ${seg.start}–${seg.end}" style="width:${widthPct}%; min-width:38px; padding:7px 4px; text-align:center; background:${pidColors[seg.pid] || '#2563eb'}; color:#fff; font-family:var(--font-mono); font-size:11px; font-weight:700; border-right:1px solid rgba(255,255,255,0.4);">
-        ${seg.pid}<br><span style="font-weight:400; font-size:10px;">${seg.start}-${seg.end}</span>
+      <div class="gantt-seg" title="${seg.pid}: t=${seg.start} to ${seg.end} (dur ${seg.end - seg.start})" style="width:${widthPct}%; min-width:34px; background:${bg};">
+        ${seg.pid}<br><span style="font-weight:400; font-size:10px;">${seg.start}–${seg.end}</span>
       </div>
     `;
   }).join("");
 
+  // Time ruler ticks
+  const rulerSteps = 8;
+  let rulerHtml = "";
+  for (let i = 0; i <= rulerSteps; i++) {
+    const tVal = Math.round((i / rulerSteps) * totalEnd);
+    rulerHtml += `<span>t=${tVal}</span>`;
+  }
+
   const rowsHtml = (algo.rows || []).map((r) => `
     <tr>
-      <td style="font-family:var(--font-mono); font-weight:700;">${r.pid}</td>
+      <td style="font-family:var(--font-mono); font-weight:700;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${pidColors[r.pid]};margin-right:6px;"></span>${r.pid}</td>
+      <td><span class="cat-pill">${r.category || 'Activity'}</span></td>
       <td>${r.arrival}</td>
       <td>P${r.priority}</td>
       <td>${r.burst}</td>
@@ -129,81 +299,371 @@ function renderAlgoBlock(key, algo) {
       <td>${r.completion} − ${r.arrival} = <strong>${r.turnaround}</strong></td>
       <td>${r.turnaround} − ${r.burst} = <strong>${r.waiting}</strong></td>
       <td><strong>${r.response}</strong></td>
+      <td><span class="badge ${r.deadline_met ? 'badge-ok' : 'badge-critical'}">${r.deadline_met ? 'MET' : 'MISS'} (t=${r.deadline})</span></td>
     </tr>
   `).join("");
 
+  const title = key === "round_robin" ? `Round Robin (Time Quantum Q = ${algo.quantum || 3})` : (ALGO_TITLES[key] || key);
   return `
-    <div style="padding:16px; border-radius:16px; background:rgba(255,255,255,0.22); border:1px solid var(--glass-border);">
+    <div style="padding:16px; border-radius:16px; background:rgba(255,255,255,0.20); border:1px solid var(--glass-border);">
       <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px;">
-        <strong style="font-size:15px;">${ALGO_TITLES[key] || key}</strong>
+        <strong style="font-size:15px;">${title}</strong>
         <div style="font-family:var(--font-mono); font-size:12px;">
-          Avg Wait: <strong>${algo.avg_waiting}</strong> &nbsp;|&nbsp;
+          Avg WT: <strong>${algo.avg_waiting}</strong> &nbsp;|&nbsp;
           Avg TAT: <strong>${algo.avg_turnaround}</strong> &nbsp;|&nbsp;
-          Avg Response: <strong>${algo.avg_response}</strong> &nbsp;|&nbsp;
+          Crit RT: <strong>${algo.critical_avg_response}</strong> &nbsp;|&nbsp;
+          SLA: <strong>${algo.sla_compliance_pct}%</strong> &nbsp;|&nbsp;
+          CPU: <strong>${algo.cpu_utilization_pct}%</strong> &nbsp;|&nbsp;
           Switches: <strong>${algo.context_switches}</strong>
         </div>
       </div>
 
-      <div style="display:flex; width:100%; border-radius:10px; overflow:hidden; margin-bottom:12px; border:1px solid rgba(255,255,255,0.5);">
-        ${ganttHtml}
+      <div class="gantt-outer">
+        <div class="gantt-track">${ganttHtml}</div>
+        <div class="gantt-ruler" style="justify-content:space-between;">${rulerHtml}</div>
       </div>
 
-      <table class="glass-table" style="font-size:13px;">
-        <thead>
-          <tr><th>PID</th><th>AT</th><th>Prio</th><th>BT</th><th>CT</th><th>Turnaround (CT−AT)</th><th>Waiting (TAT−BT)</th><th>Response</th></tr>
-        </thead>
-        <tbody>${rowsHtml}</tbody>
-      </table>
+      <div style="overflow-x:auto;">
+        <table class="glass-table" style="font-size:12px;">
+          <thead>
+            <tr><th>PID</th><th>Subsystem</th><th>AT</th><th>Prio</th><th>BT</th><th>CT</th><th>TAT (CT−AT)</th><th>WT (TAT−BT)</th><th>RT</th><th>SLA Deadline</th></tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
     </div>
   `;
 }
 
-function showAlgo(which) {
+function renderAlgoComparisonSVG(algos) {
+  const keys = ALGO_ORDER.filter((k) => algos[k]);
+  if (!keys.length) return "";
+  const w = 540, h = 230, padL = 36, padB = 48, padT = 22, padR = 14;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const maxVal = Math.max(
+    10,
+    ...keys.map((k) => Math.max(algos[k].avg_waiting, algos[k].avg_turnaround, algos[k].critical_avg_response))
+  );
+  const groupW = plotW / keys.length;
+  const barW = Math.max(6, Math.min(14, (groupW - 10) / 3));
+
+  const shortNames = {
+    preemptive_priority: "P-Prio",
+    fcfs: "FCFS",
+    sjf: "SJF",
+    srtf: "SRTF",
+    non_preemptive_priority: "NP-Prio",
+    round_robin: "RR",
+    edf: "EDF",
+    mlfq: "MLFQ",
+  };
+
+  let bars = "";
+  keys.forEach((k, i) => {
+    const a = algos[k];
+    const gx = padL + i * groupW + 6;
+    const vals = [
+      { v: a.avg_waiting, c: "#2563eb", lbl: "Avg WT" },
+      { v: a.avg_turnaround, c: "#65a30d", lbl: "Avg TAT" },
+      { v: a.critical_avg_response, c: "#e11d48", lbl: "Crit RT" },
+    ];
+    vals.forEach((item, j) => {
+      const bh = Math.max(2, (item.v / maxVal) * plotH);
+      const bx = gx + j * (barW + 2);
+      const by = padT + plotH - bh;
+      bars += `<rect x="${bx}" y="${by}" width="${barW}" height="${bh}" rx="3" fill="${item.c}"><title>${shortNames[k]} ${item.lbl}: ${item.v}</title></rect>`;
+    });
+    bars += `<text x="${gx + barW * 1.5}" y="${h - 24}" text-anchor="middle" fill="currentColor" font-size="10" font-family="monospace">${shortNames[k]}</text>`;
+  });
+
+  return `
+    <svg viewBox="0 0 ${w} ${h}" width="100%" height="225" role="img" aria-label="Scheduling Metrics Comparison Bar Chart">
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="currentColor" stroke-opacity="0.3"/>
+      <line x1="${padL}" y1="${padT + plotH}" x2="${w - padR}" y2="${padT + plotH}" stroke="currentColor" stroke-opacity="0.3"/>
+      <text x="6" y="${padT + 6}" fill="currentColor" font-size="10" font-family="monospace">${Math.round(maxVal)}</text>
+      <text x="14" y="${padT + plotH}" fill="currentColor" font-size="10" font-family="monospace">0</text>
+      ${bars}
+      <g transform="translate(${padL}, ${h - 8})" font-size="10" font-family="monospace">
+        <rect x="0" y="-8" width="9" height="9" fill="#2563eb" rx="2"/><text x="13" y="0" fill="currentColor">Avg Wait</text>
+        <rect x="85" y="-8" width="9" height="9" fill="#65a30d" rx="2"/><text x="98" y="0" fill="currentColor">Avg TAT</text>
+        <rect x="165" y="-8" width="9" height="9" fill="#e11d48" rx="2"/><text x="178" y="0" fill="currentColor">Critical Response</text>
+      </g>
+    </svg>
+  `;
+}
+
+function showAlgo(which, btnEl) {
   selectedAlgo = which;
+  if (btnEl) {
+    document.querySelectorAll("#algo-btn-bar button").forEach((b) => {
+      b.classList.remove("keycap-blue");
+      if (!b.classList.contains("keycap-lime")) b.classList.add("keycap-white");
+    });
+    if (which !== "all") {
+      btnEl.classList.remove("keycap-white");
+      btnEl.classList.add("keycap-blue");
+    }
+  }
   if (!monitorData) return;
   const algos = monitorData.live_algorithms || {};
-  const keys = which === "all" ? ["preemptive_priority", "fcfs", "sjf", "round_robin"] : [which];
+  const keys = which === "all" ? ALGO_ORDER : [which];
   document.getElementById("algo-container").innerHTML = keys.map((k) => renderAlgoBlock(k, algos[k])).join("");
 }
 
-async function loadAllKernelData() {
-  const { data } = await HEMS.api("/api/monitor");
-  monitorData = data;
+function renderAlgorithmsSection(algos) {
+  showAlgo(selectedAlgo);
+  const labels = {
+    preemptive_priority: "Preemptive Priority",
+    fcfs: "FCFS",
+    sjf: "SJF",
+    srtf: "SRTF (Preemptive)",
+    non_preemptive_priority: "Priority (Non-Preemptive)",
+    round_robin: "Round Robin",
+    edf: "EDF (Real-Time)",
+    mlfq: "MLFQ",
+  };
+  document.getElementById("algo-summary-body").innerHTML = ALGO_ORDER
+    .filter((k) => Boolean(algos[k]))
+    .map((k) => {
+      const a = algos[k];
+      return `
+        <tr>
+          <td><strong>${labels[k]}</strong></td>
+          <td>${a.avg_waiting}</td>
+          <td>${a.avg_turnaround}</td>
+          <td><strong>${a.critical_avg_response}</strong></td>
+          <td><span class="badge ${a.sla_compliance_pct >= 80 ? 'badge-ok' : 'badge-warn'}">${a.sla_compliance_pct}%</span></td>
+          <td>${a.cpu_utilization_pct}%</td>
+          <td>${a.context_switches}</td>
+        </tr>
+      `;
+    }).join("");
+  document.getElementById("algo-svg-chart").innerHTML = renderAlgoComparisonSVG(algos);
+}
 
-  // 1. PCBs
-  const procs = (data.scheduler && data.scheduler.all_processes) || [];
+function renderKernelState(sched) {
+  if (!sched) return;
+  document.getElementById("kern-clock").textContent = `t = ${sched.clock}`;
+  document.getElementById("kern-running").textContent = sched.running
+    ? `Running: ${sched.running.pid} (P${sched.running.effective_priority}, rem ${sched.running.remaining_time})`
+    : "CPU Idle / Waiting";
+  document.getElementById("kern-util").textContent = `${sched.cpu_utilization_pct || 0}%`;
+  document.getElementById("kern-switches").textContent = `Context switches: ${sched.context_switches}`;
+  document.getElementById("kern-queues").textContent = `${(sched.ready_queue || []).length} / ${(sched.waiting_queue || []).length}`;
+  document.getElementById("kern-policy-lbl").textContent = `Policy: ${(sched.policy || "").replace(/_/g, " ")}`;
+  document.getElementById("live-policy-select").value = sched.policy || "preemptive_priority";
+
+  const procs = sched.all_processes || [];
+  const cats = new Set(procs.map((p) => p.category));
+  document.getElementById("kern-cats").textContent = `${procs.length} Procs / ${cats.size} Subsystems`;
+
   document.getElementById("pcb-body").innerHTML = procs.map((p) => `
     <tr>
       <td style="font-family:var(--font-mono); font-weight:700;">${p.pid}</td>
       <td>${p.name}</td>
+      <td><span class="cat-pill">${p.category || 'Hospital'}</span></td>
       <td>${p.arrival_time}</td>
-      <td><span class="badge ${p.priority <= 3 ? 'badge-critical' : 'badge-info'}">P${p.priority}</span></td>
-      <td>${p.burst_time}</td>
-      <td><strong>${p.state}</strong></td>
+      <td>
+        <span class="badge ${p.effective_priority <= 3 ? 'badge-critical' : 'badge-info'}">
+          P${p.priority}${p.effective_priority !== p.priority ? ' → P' + p.effective_priority : ''}
+        </span>
+      </td>
+      <td style="font-family:var(--font-mono);">${p.remaining_time} / ${p.burst_time}</td>
+      <td style="font-family:var(--font-mono);">t=${p.deadline ?? '—'}</td>
+      <td><span class="badge ${p.state === 'RUNNING' ? 'badge-ok' : (p.state === 'TERMINATED' ? 'badge-info' : (p.state === 'WAITING' ? 'badge-warn' : 'badge-info'))}">${p.state}</span></td>
     </tr>
   `).join("");
 
-  // 2. Algorithms + Summary Comparison Table
-  showAlgo(selectedAlgo);
-  const algos = data.live_algorithms || {};
-  const summaryRows = [
-    ["Preemptive Priority (Recommended)", algos.preemptive_priority],
-    ["FCFS", algos.fcfs],
-    ["SJF (Non-preemptive)", algos.sjf],
-    ["Round Robin (Q=3)", algos.round_robin],
-  ].filter(([, a]) => Boolean(a));
-  document.getElementById("algo-summary-body").innerHTML = summaryRows.map(([label, a]) => `
-    <tr>
-      <td><strong>${label}</strong></td>
-      <td>${a.avg_waiting}</td>
-      <td>${a.avg_turnaround}</td>
-      <td>${a.avg_response}</td>
-      <td><strong>${a.critical_avg_response}</strong></td>
-      <td>${a.context_switches}</td>
-    </tr>
-  `).join("");
+  document.getElementById("kernel-decisions").innerHTML = (sched.decisions || []).slice().reverse().map((d) => `
+    <div style="padding:5px 8px; border-radius:8px; background:rgba(255,255,255,0.12);">
+      <strong>[t=${d.tick}] ${d.action}</strong> (${d.pid}): ${d.detail}
+    </div>
+  `).join("") || "No kernel decisions yet.";
+}
 
-  // 3. Semaphores
+async function kernelControl(action) {
+  const { data } = await HEMS.api("/api/scheduler/control", {
+    method: "POST",
+    body: JSON.stringify({ action }),
+  });
+  renderKernelState(data.scheduler);
+}
+
+async function changeLivePolicy() {
+  const policy = document.getElementById("live-policy-select").value;
+  const { data } = await HEMS.api("/api/scheduler/control", {
+    method: "POST",
+    body: JSON.stringify({ action: "set_policy", policy }),
+  });
+  renderKernelState(data.scheduler);
+}
+
+function toggleAutoPlay() {
+  const btn = document.getElementById("autoplay-btn");
+  if (autoPlayTimer) {
+    clearInterval(autoPlayTimer);
+    autoPlayTimer = null;
+    btn.textContent = "▶ Auto-Play";
+    return;
+  }
+  btn.textContent = "❚❚ Pause";
+  autoPlayTimer = setInterval(() => kernelControl("step"), 900);
+}
+
+function onWorkloadChange() {
+  const wl = document.getElementById("workload-select").value;
+  const builder = document.getElementById("custom-builder");
+  builder.style.display = wl === "custom" ? "block" : "none";
+  if (wl === "custom") {
+    if (!customProcesses.length) seedCustomFromPreset();
+    else runCustomSimulation();
+  } else {
+    reloadAlgorithms();
+  }
+}
+
+function seedCustomFromPreset() {
+  customProcesses = [
+    { pid: "C1", name: "OP Walk-in Triage", category: "OP Patient", arrival_time: 0, priority: 6, burst_time: 4, deadline: 28 },
+    { pid: "C2", name: "Lab CBC Batch", category: "Laboratory", arrival_time: 0, priority: 5, burst_time: 5, deadline: 25 },
+    { pid: "C3", name: "Pharmacy Refill", category: "Pharmacy", arrival_time: 1, priority: 7, burst_time: 3, deadline: 30 },
+    { pid: "C4", name: "ICU Telemetry", category: "ICU Monitoring", arrival_time: 2, priority: 2, burst_time: 4, deadline: 9 },
+    { pid: "C5", name: "Cardiac Code Blue", category: "Emergency", arrival_time: 3, priority: 1, burst_time: 6, deadline: 10 },
+    { pid: "C6", name: "Stat ABG Lab", category: "Laboratory", arrival_time: 4, priority: 3, burst_time: 3, deadline: 12 },
+    { pid: "C7", name: "Road Trauma ICU", category: "Emergency", arrival_time: 5, priority: 2, burst_time: 5, deadline: 14 },
+    { pid: "C8", name: "ICU Epinephrine", category: "Pharmacy", arrival_time: 6, priority: 4, burst_time: 2, deadline: 15 },
+  ];
+  renderCustomList();
+  runCustomSimulation();
+}
+
+function renderCustomList() {
+  document.getElementById("custom-list").innerHTML = customProcesses.map((p, idx) => `
+    <span class="cat-pill">
+      ${p.pid}: ${p.name} (${p.category}, AT=${p.arrival_time}, P${p.priority}, BT=${p.burst_time}, DL=${p.deadline})
+      <button type="button" onclick="removeCustomProc(${idx})" style="background:none;border:none;color:inherit;cursor:pointer;font-weight:700;">×</button>
+    </span>
+  `).join("");
+}
+
+function addCustomProc() {
+  const nextId = `C${customProcesses.length + 1}`;
+  customProcesses.push({
+    pid: nextId,
+    name: document.getElementById("cp-name").value.trim() || `Task ${nextId}`,
+    category: document.getElementById("cp-cat").value,
+    arrival_time: parseInt(document.getElementById("cp-at").value || "0", 10),
+    priority: parseInt(document.getElementById("cp-prio").value || "5", 10),
+    burst_time: parseInt(document.getElementById("cp-bt").value || "4", 10),
+    deadline: parseInt(document.getElementById("cp-dl").value || "15", 10),
+  });
+  renderCustomList();
+  runCustomSimulation();
+}
+
+function removeCustomProc(idx) {
+  customProcesses.splice(idx, 1);
+  renderCustomList();
+  if (customProcesses.length) runCustomSimulation();
+}
+
+async function runCustomSimulation() {
+  const quantum = document.getElementById("quantum-slider").value;
+  const aging = document.getElementById("aging-slider").value;
+  const { ok, data } = await HEMS.api("/api/monitor/simulate", {
+    method: "POST",
+    body: JSON.stringify({ processes: customProcesses, quantum: Number(quantum), aging: Number(aging) }),
+  });
+  if (!ok) return;
+  monitorData = { ...(monitorData || {}), live_algorithms: data.algorithms };
+  renderAlgorithmsSection(data.algorithms);
+}
+
+async function reloadAlgorithms() {
+  const wl = document.getElementById("workload-select").value;
+  if (wl === "custom") {
+    return runCustomSimulation();
+  }
+  const q = document.getElementById("quantum-slider").value;
+  const ag = document.getElementById("aging-slider").value;
+  document.getElementById("export-csv-btn").href = `/api/export/csv?workload=${wl}&quantum=${q}&aging=${ag}`;
+  const { data } = await HEMS.api(`/api/monitor?workload=${wl}&quantum=${q}&aging=${ag}`);
+  monitorData = data;
+  renderAlgorithmsSection(data.live_algorithms || {});
+}
+
+function renderRagSVG() {
+  return `
+    <svg viewBox="0 0 420 135" width="100%" height="130" role="img" aria-label="Resource Allocation Graph Deadlock Cycle">
+      <!-- Processes (Circles) -->
+      <circle cx="75" cy="68" r="24" fill="rgba(37,99,235,0.25)" stroke="#2563eb" stroke-width="2.5"/>
+      <text x="75" y="65" text-anchor="middle" fill="currentColor" font-size="11" font-family="monospace" font-weight="700">Req-X</text>
+      <text x="75" y="79" text-anchor="middle" fill="currentColor" font-size="9" font-family="monospace">P2</text>
+
+      <circle cx="345" cy="68" r="24" fill="rgba(225,29,72,0.25)" stroke="#e11d48" stroke-width="2.5"/>
+      <text x="345" y="65" text-anchor="middle" fill="currentColor" font-size="11" font-family="monospace" font-weight="700">Req-Y</text>
+      <text x="345" y="79" text-anchor="middle" fill="currentColor" font-size="9" font-family="monospace">P5 Victim</text>
+
+      <!-- Resources (Rectangles) -->
+      <rect x="170" y="12" width="84" height="32" rx="6" fill="rgba(163,230,53,0.28)" stroke="#65a30d" stroke-width="2"/>
+      <text x="212" y="32" text-anchor="middle" fill="currentColor" font-size="10" font-family="monospace" font-weight="700">R1: ICU Bed</text>
+
+      <rect x="170" y="92" width="84" height="32" rx="6" fill="rgba(163,230,53,0.28)" stroke="#65a30d" stroke-width="2"/>
+      <text x="212" y="112" text-anchor="middle" fill="currentColor" font-size="10" font-family="monospace" font-weight="700">R2: Vent</text>
+
+      <!-- Hold & Request Arrows -->
+      <line x1="170" y1="28" x2="96" y2="54" stroke="#65a30d" stroke-width="2.2"/>
+      <text x="122" y="34" fill="#65a30d" font-size="9" font-family="monospace" font-weight="700">HOLDS</text>
+
+      <line x1="96" y1="82" x2="170" y2="106" stroke="#e11d48" stroke-width="2" stroke-dasharray="4 3"/>
+      <text x="115" y="108" fill="#e11d48" font-size="9" font-family="monospace" font-weight="700">WAITS</text>
+
+      <line x1="254" y1="108" x2="322" y2="80" stroke="#65a30d" stroke-width="2.2"/>
+      <text x="275" y="108" fill="#65a30d" font-size="9" font-family="monospace" font-weight="700">HOLDS</text>
+
+      <line x1="322" y1="54" x2="254" y2="28" stroke="#e11d48" stroke-width="2" stroke-dasharray="4 3"/>
+      <text x="275" y="34" fill="#e11d48" font-size="9" font-family="monospace" font-weight="700">WAITS</text>
+    </svg>
+  `;
+}
+
+function renderAgingSVG(agingRes) {
+  const trace = agingRes.aging_trace || [];
+  if (!trace.length) return `<p>Aging dispatched P8 at t=${agingRes.with_aging_first_dispatch}</p>`;
+  const w = 420, h = 135, padL = 36, padB = 26, padT = 16, padR = 16;
+  const maxT = Math.max(80, ...trace.map((pt) => pt.tick));
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const pts = trace.map((pt) => {
+    const x = padL + (pt.tick / maxT) * plotW;
+    const y = padT + ((pt.effective_priority - 1) / 7) * plotH;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+
+  return `
+    <p style="margin-top:0;"><strong>${agingRes.summary}</strong></p>
+    <svg viewBox="0 0 ${w} ${h}" width="100%" height="130" role="img" aria-label="Aging Priority Boost Over Time">
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="currentColor" stroke-opacity="0.3"/>
+      <line x1="${padL}" y1="${padT + plotH}" x2="${w - padR}" y2="${padT + plotH}" stroke="currentColor" stroke-opacity="0.3"/>
+      <text x="6" y="${padT + 8}" fill="currentColor" font-size="9" font-family="monospace">P1</text>
+      <text x="6" y="${padT + plotH}" fill="currentColor" font-size="9" font-family="monospace">P8</text>
+      <text x="${padL}" y="${h - 6}" fill="currentColor" font-size="9" font-family="monospace">t=0</text>
+      <text x="${w - 42}" y="${h - 6}" fill="currentColor" font-size="9" font-family="monospace">t=${maxT}</text>
+      <polyline fill="none" stroke="#65a30d" stroke-width="3" points="${pts}"/>
+    </svg>
+  `;
+}
+
+async function loadAllKernelData() {
+  const q = document.getElementById("quantum-slider").value;
+  const ag = document.getElementById("aging-slider").value;
+  const wl = document.getElementById("workload-select").value;
+  const { data } = await HEMS.api(`/api/monitor?workload=${wl}&quantum=${q}&aging=${ag}`);
+  monitorData = data;
+
+  renderKernelState(data.scheduler);
+  renderAlgorithmsSection(data.live_algorithms || {});
+
+  // Semaphores
   const sems = data.semaphores || {};
   document.getElementById("sem-body").innerHTML = Object.entries(sems).map(([hid, facs]) => `
     <tr>
@@ -214,17 +674,17 @@ async function loadAllKernelData() {
     </tr>
   `).join("");
 
-  // 4. Mutex Events
+  // Mutex Events
   document.getElementById("mon-events").innerHTML = (data.events || []).slice(-10).reverse()
     .map((e) => `<div><strong>[${e.type}]</strong> ${e.detail}</div>`).join("") || "No mutex events yet.";
 
-  // 5. Banker
+  // Banker
   const b = data.banker || {};
   const safe = b.safe_state || {};
   document.getElementById("mon-banker").innerHTML = `
     <p style="margin-top:0;">Available [ICU, Vent, Spec]: <strong style="font-family:var(--font-mono);">[${(b.available || []).join(", ")}]</strong></p>
     <p><span class="badge ${safe.safe ? 'badge-ok' : 'badge-critical'}">${safe.safe ? '● SAFE' : '▲ UNSAFE'}</span> ${safe.reason || ""}</p>
-    <table class="glass-table">
+    <table class="glass-table" style="font-size:12px;">
       <thead><tr><th>Req</th><th>Alloc</th><th>Max</th><th>Need</th></tr></thead>
       <tbody>
         ${(b.rows || []).map((r) => `<tr><td>${r.pid}</td><td>[${r.allocation.join(",")}]</td><td>[${r.max_need.join(",")}]</td><td>[${r.remaining_need.join(",")}]</td></tr>`).join("")}
@@ -232,27 +692,48 @@ async function loadAllKernelData() {
     </table>
   `;
 
-  // 6. Auto-run live Race & Deadlock proofs so they are immediately visible without dummy buttons
-  const [raceRes, deadRes] = await Promise.all([
+  document.getElementById("rag-svg-wrap").innerHTML = renderRagSVG();
+
+  // Auto-run live Race, Deadlock, Aging & Priority Inheritance proofs
+  const [raceRes, deadRes, agingRes, piRes] = await Promise.all([
     HEMS.api("/api/simulator/run", { method: "POST", body: JSON.stringify({ scenario: "race_condition", trials: 200 }) }),
     HEMS.api("/api/simulator/run", { method: "POST", body: JSON.stringify({ scenario: "deadlock" }) }),
+    HEMS.api("/api/simulator/run", { method: "POST", body: JSON.stringify({ scenario: "aging" }) }),
+    HEMS.api("/api/simulator/run", { method: "POST", body: JSON.stringify({ scenario: "priority_inheritance" }) }),
   ]);
+
   const r = raceRes.data;
   const d = deadRes.data;
   document.getElementById("auto-proofs").innerHTML = `
-    <div style="padding:12px; border-radius:12px; background:var(--status-ok-bg);">
+    <div style="padding:10px; border-radius:12px; background:var(--status-ok-bg);">
       <strong>Mutex Race Test (${r.trials} concurrent trials):</strong><br>
       Without Mutex: <strong>${r.without_mutex_double_bookings}</strong> double-bookings &nbsp;|&nbsp;
       With Mutex: <strong>${r.with_mutex_double_bookings}</strong> double-bookings
     </div>
-    <div style="padding:12px; border-radius:12px; background:var(--status-warn-bg);">
-      <strong>Deadlock RAG Recovery:</strong><br>
-      Cycle: <code>${d.recovery.cycle.join(" → ")}</code><br>
+    <div style="padding:10px; border-radius:12px; background:var(--status-warn-bg);">
+      <strong>Deadlock RAG Recovery:</strong> Cycle <code>${d.recovery.cycle.join(" → ")}</code><br>
       Victim released: <strong>${d.recovery.victim}</strong> (${d.recovery.released.join(", ")})
     </div>
   `;
 
-  // 7. 5 Algorithm Test Cases
+  const pi = piRes.data;
+  document.getElementById("pi-proof").innerHTML = `
+    <p style="margin-top:0;">${pi.summary} (Delay: <strong>${pi.delay_without} ticks</strong> → <strong>${pi.delay_with} ticks</strong>)</p>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      <div style="padding:10px; border-radius:10px; background:var(--status-critical-bg);">
+        <strong>Without Inheritance</strong>
+        ${(pi.without_inheritance || []).map((row) => `<div style="margin-top:4px;"><code>t=${row.tick}</code> ${row.holder}: ${row.event}</div>`).join("")}
+      </div>
+      <div style="padding:10px; border-radius:10px; background:var(--status-ok-bg);">
+        <strong>With Inheritance</strong>
+        ${(pi.with_inheritance || []).map((row) => `<div style="margin-top:4px;"><code>t=${row.tick}</code> ${row.holder}: ${row.event}</div>`).join("")}
+      </div>
+    </div>
+  `;
+
+  document.getElementById("aging-chart-wrap").innerHTML = renderAgingSVG(agingRes.data);
+
+  // 5 Algorithm Test Cases
   document.getElementById("cases-body").innerHTML = (data.test_cases || []).map((c) => `
     <tr>
       <td style="font-family:var(--font-mono); font-weight:700;">${c.case_id}</td>

@@ -20,12 +20,22 @@
       </a>
 
       <nav class="nav-pills" aria-label="Primary navigation" style="margin-left:auto;">
-        <a class="nav-pill {{ 'active' if active_page == 'dashboard' }}" href="{{ url_for('screen_dashboard') }}" data-i18n="nav_dispatch">1. Patient Dispatch</a>
-        <a class="nav-pill {{ 'active' if active_page == 'monitor' }}" href="{{ url_for('screen_monitor') }}" data-i18n="nav_kernel">2. OS Kernel &amp; Math</a>
-        <a class="nav-pill {{ 'active' if active_page == 'availability' }}" href="{{ url_for('screen_availability') }}" data-i18n="nav_beds">3. Bed Board</a>
+        <a class="nav-pill {{ 'active' if active_page == 'dashboard' }}" href="{{ url_for('screen_dashboard') }}" data-i18n="nav_dispatch">1. Dispatch</a>
+        <a class="nav-pill {{ 'active' if active_page == 'monitor' }}" href="{{ url_for('screen_monitor') }}" data-i18n="nav_kernel">2. OS Kernel &amp; Lab</a>
+        <a class="nav-pill {{ 'active' if active_page == 'analytics' }}" href="{{ url_for('screen_analytics') }}" data-i18n="nav_analytics">3. Analytics</a>
+        <a class="nav-pill {{ 'active' if active_page == 'availability' }}" href="{{ url_for('screen_availability') }}" data-i18n="nav_beds">4. Bed Board</a>
+        <a class="nav-pill {{ 'active' if active_page == 'surge' }}" href="{{ url_for('screen_surge') }}" data-i18n="nav_surge">5. Surge</a>
+        <a class="nav-pill {{ 'active' if active_page == 'tracker' }}" href="{{ url_for('screen_tracker') }}" data-i18n="nav_tracker">6. Tracker</a>
       </nav>
 
       <div class="topbar-controls">
+        <select id="role-select" class="glass-select compact-select" aria-label="Active Role" title="RBAC Role">
+          <option value="coordinator">Coordinator</option>
+          <option value="referring">Referring</option>
+          <option value="receiving">Receiving</option>
+          <option value="auditor">Auditor (RO)</option>
+        </select>
+
         <select id="lang-select" class="glass-select compact-select" aria-label="Language">
           <option value="en">EN</option>
           <option value="hi">HI</option>

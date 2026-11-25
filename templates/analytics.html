@@ -2,73 +2,228 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <h1 class="page-title">Analytics & Scheduling Benchmark</h1>
-    <p class="page-desc">Comparison of FCFS, SJF, Preemptive Priority, and Round Robin (Q=3) on the 8-process case-study workload.</p>
+    <h1 class="page-title">Analytics &amp; CPU Scheduling Criteria Lab</h1>
+    <p class="page-desc">Compare all 8 scheduling policies, analyze Round Robin Quantum sensitivity (Q=1..8), and inspect Real-Time SLA compliance.</p>
+  </div>
+  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <select id="ana-workload" class="glass-select compact-select" onchange="loadAnalytics()">
+      <option value="case_study">Case Study 2 (8-Process T1–T8)</option>
+      <option value="hospital10">Full Hospital Mix (10-Process H1–H10)</option>
+      <option value="live">Live System Queue</option>
+    </select>
+    <a id="ana-export-btn" class="keycap-btn keycap-white keycap-sm" href="/api/export/csv?workload=case_study">Export CSV</a>
   </div>
 </div>
 
-<div class="glass glass-card" style="margin-bottom:24px;">
-  <h2 style="margin-top:0; font-size:18px;">Algorithm Comparison (Accessible Data Table)</h2>
-  <table class="glass-table">
+<!-- Top KPI Highlights -->
+<section class="kpi-strip">
+  <div class="glass kpi-tile">
+    <span class="kpi-label">Lowest Avg Waiting</span>
+    <span id="ana-best-wt" class="kpi-value" style="color:var(--status-ok);">—</span>
+    <span id="ana-best-wt-sub" class="kpi-sub">Minimizes queue delay</span>
+  </div>
+  <div class="glass kpi-tile">
+    <span class="kpi-label">Best Critical Response (P1–P3)</span>
+    <span id="ana-best-crit" class="kpi-value" style="color:var(--status-info);">—</span>
+    <span id="ana-best-crit-sub" class="kpi-sub">Emergency first-dispatch</span>
+  </div>
+  <div class="glass kpi-tile">
+    <span class="kpi-label">Highest Real-Time SLA %</span>
+    <span id="ana-best-sla" class="kpi-value">—</span>
+    <span id="ana-best-sla-sub" class="kpi-sub">Deadlines met</span>
+  </div>
+  <div class="glass kpi-tile">
+    <span class="kpi-label">Optimal RR Quantum (Q)</span>
+    <span id="ana-best-q" class="kpi-value">—</span>
+    <span id="ana-best-q-sub" class="kpi-sub">Balanced wait vs switches</span>
+  </div>
+</section>
+
+<!-- Full 8-Algorithm Comparison Table -->
+<div class="glass glass-card" style="margin-bottom:22px; overflow-x:auto;">
+  <h2 style="margin-top:0; font-size:18px;">8-Algorithm Scheduling Criteria Matrix</h2>
+  <table class="glass-table" style="font-size:13px;">
     <thead>
       <tr>
         <th>Algorithm</th>
         <th>Avg Wait</th>
         <th>Avg Turnaround</th>
-        <th>Critical Avg Wait (T6–T8)</th>
-        <th>Critical Avg Response</th>
+        <th>Avg Response</th>
+        <th>Critical Wait (P1–P3)</th>
+        <th>Critical Response</th>
         <th>Context Switches</th>
+        <th>CPU Util %</th>
+        <th>Throughput</th>
+        <th>SLA Met %</th>
       </tr>
     </thead>
     <tbody id="bench-body"></tbody>
   </table>
 </div>
 
+<!-- Dual Visual Charts -->
+<div class="grid-2" style="margin-bottom:22px;">
+  <div class="glass glass-card">
+    <h2 style="margin-top:0; font-size:18px;">Round Robin Quantum Sensitivity (Q = 1 to 8)</h2>
+    <p style="font-size:12px; color:var(--text-secondary); margin-top:0;">Shows the trade-off between Avg Waiting Time and Context Switch overhead as Time Quantum increases.</p>
+    <div id="quantum-svg-wrap" class="svg-chart-wrap"></div>
+  </div>
+
+  <div class="glass glass-card">
+    <h2 style="margin-top:0; font-size:18px;">Critical First-Response &amp; SLA Comparison</h2>
+    <div id="bench-bars" style="display:flex; flex-direction:column; gap:10px;"></div>
+  </div>
+</div>
+
+<!-- Hospital Subsystem Mix -->
 <div class="glass glass-card">
-  <h2 style="margin-top:0; font-size:18px;">Critical First-Response Comparison (Lower is Better)</h2>
-  <div id="bench-bars" style="display:flex; flex-direction:column; gap:12px;"></div>
+  <h2 style="margin-top:0; font-size:18px;">Hospital Activity Subsystem Breakdown (10-Process Clinical Mix)</h2>
+  <div id="subsystem-bars" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px;"></div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-(async function loadAnalytics() {
-  const { data } = await HEMS.api("/api/analytics");
-  const b = data.benchmark || {};
-  const list = [
-    { label: "FCFS", d: b.fcfs },
-    { label: "SJF (Non-preemptive)", d: b.sjf },
-    { label: "Preemptive Priority", d: b.preemptive_priority },
-    { label: "Round Robin (Q=3)", d: b.round_robin },
-  ];
+const ALGO_LIST = [
+  { key: "preemptive_priority", label: "Preemptive Priority (+Aging)" },
+  { key: "non_preemptive_priority", label: "Non-Preemptive Priority" },
+  { key: "edf", label: "EDF (Real-Time Deadline)" },
+  { key: "srtf", label: "SRTF (Preemptive SJF)" },
+  { key: "sjf", label: "SJF (Non-Preemptive)" },
+  { key: "round_robin", label: "Round Robin (Q=3)" },
+  { key: "mlfq", label: "MLFQ (3-Level)" },
+  { key: "fcfs", label: "FCFS" },
+];
+
+function renderQuantumSVG(sweep) {
+  if (!sweep || !sweep.length) return "";
+  const w = 480, h = 210, padL = 38, padR = 38, padT = 22, padB = 34;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const maxWt = Math.max(10, ...sweep.map((d) => d.avg_waiting));
+  const maxSw = Math.max(5, ...sweep.map((d) => d.context_switches));
+
+  const wtPts = sweep.map((d, i) => {
+    const x = padL + (i / (sweep.length - 1)) * plotW;
+    const y = padT + plotH - (d.avg_waiting / maxWt) * plotH;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+
+  const swPts = sweep.map((d, i) => {
+    const x = padL + (i / (sweep.length - 1)) * plotW;
+    const y = padT + plotH - (d.context_switches / maxSw) * plotH;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+
+  const dotsAndLabels = sweep.map((d, i) => {
+    const x = padL + (i / (sweep.length - 1)) * plotW;
+    const y1 = padT + plotH - (d.avg_waiting / maxWt) * plotH;
+    const y2 = padT + plotH - (d.context_switches / maxSw) * plotH;
+    return `
+      <circle cx="${x}" cy="${y1}" r="4" fill="#2563eb"><title>Q=${d.quantum}: Avg Wait ${d.avg_waiting}</title></circle>
+      <circle cx="${x}" cy="${y2}" r="4" fill="#e11d48"><title>Q=${d.quantum}: ${d.context_switches} switches</title></circle>
+      <text x="${x}" y="${h - 14}" text-anchor="middle" fill="currentColor" font-size="10" font-family="monospace">Q=${d.quantum}</text>
+    `;
+  }).join("");
+
+  return `
+    <svg viewBox="0 0 ${w} ${h}" width="100%" height="210" role="img" aria-label="Quantum Sensitivity Chart">
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}" stroke="currentColor" stroke-opacity="0.3"/>
+      <line x1="${padL}" y1="${padT + plotH}" x2="${w - padR}" y2="${padT + plotH}" stroke="currentColor" stroke-opacity="0.3"/>
+      <polyline fill="none" stroke="#2563eb" stroke-width="2.5" points="${wtPts}"/>
+      <polyline fill="none" stroke="#e11d48" stroke-width="2.5" stroke-dasharray="5 3" points="${swPts}"/>
+      ${dotsAndLabels}
+      <g transform="translate(${padL}, 12)" font-size="10" font-family="monospace">
+        <rect x="0" y="-8" width="10" height="4" fill="#2563eb"/><text x="14" y="-4" fill="currentColor">Avg Wait (${Math.round(maxWt)} max)</text>
+        <rect x="170" y="-8" width="10" height="4" fill="#e11d48"/><text x="184" y="-4" fill="currentColor">Context Switches (${maxSw} max)</text>
+      </g>
+    </svg>
+  `;
+}
+
+async function loadAnalytics() {
+  const wl = document.getElementById("ana-workload").value;
+  document.getElementById("ana-export-btn").href = `/api/export/csv?workload=${wl}`;
+  const { data } = await HEMS.api(`/api/analytics?workload=${wl}`);
+  const ext = data.extended_benchmark || {};
+  const list = ALGO_LIST.filter((a) => ext[a.key]).map((a) => ({ label: a.label, key: a.key, d: ext[a.key] }));
+
+  // KPI cards
+  const bestWt = list.slice().sort((a, b) => a.d.avg_waiting - b.d.avg_waiting)[0];
+  const bestCrit = list.slice().sort((a, b) => a.d.critical_avg_response - b.d.critical_avg_response)[0];
+  const bestSla = list.slice().sort((a, b) => b.d.sla_compliance_pct - a.d.sla_compliance_pct)[0];
+  const sweep = data.quantum_sweep || [];
+  const bestQ = sweep.slice().sort((a, b) => (a.avg_waiting + a.context_switches * 0.4) - (b.avg_waiting + b.context_switches * 0.4))[0];
+
+  if (bestWt) {
+    document.getElementById("ana-best-wt").textContent = `${bestWt.d.avg_waiting} ticks`;
+    document.getElementById("ana-best-wt-sub").textContent = bestWt.label;
+  }
+  if (bestCrit) {
+    document.getElementById("ana-best-crit").textContent = `${bestCrit.d.critical_avg_response} ticks`;
+    document.getElementById("ana-best-crit-sub").textContent = bestCrit.label;
+  }
+  if (bestSla) {
+    document.getElementById("ana-best-sla").textContent = `${bestSla.d.sla_compliance_pct}%`;
+    document.getElementById("ana-best-sla-sub").textContent = bestSla.label;
+  }
+  if (bestQ) {
+    document.getElementById("ana-best-q").textContent = `Q = ${bestQ.quantum}`;
+    document.getElementById("ana-best-q-sub").textContent = `Wait ${bestQ.avg_waiting} • ${bestQ.context_switches} switches`;
+  }
 
   document.getElementById("bench-body").innerHTML = list.map((item) => `
     <tr>
       <td><strong>${item.label}</strong></td>
       <td>${item.d.avg_waiting}</td>
       <td>${item.d.avg_turnaround}</td>
+      <td>${item.d.avg_response}</td>
       <td>${item.d.critical_avg_waiting}</td>
       <td><strong>${item.d.critical_avg_response}</strong></td>
       <td>${item.d.context_switches}</td>
+      <td>${item.d.cpu_utilization_pct}%</td>
+      <td>${item.d.throughput}/t</td>
+      <td><span class="badge ${item.d.sla_compliance_pct >= 80 ? 'badge-ok' : 'badge-warn'}">${item.d.sla_compliance_pct}%</span></td>
     </tr>
   `).join("");
 
+  const maxResp = Math.max(10, ...list.map((i) => i.d.critical_avg_response));
   document.getElementById("bench-bars").innerHTML = list.map((item) => {
     const val = item.d.critical_avg_response;
-    const pct = Math.min(100, Math.round((val / 25) * 100));
+    const pct = Math.min(100, Math.round((val / maxResp) * 100));
     return `
       <div>
-        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:3px;">
           <span>${item.label}</span>
-          <span style="font-family:var(--font-mono);">${val} units</span>
+          <span style="font-family:var(--font-mono);">${val}t response • ${item.d.sla_compliance_pct}% SLA</span>
         </div>
-        <div style="height:12px; border-radius:999px; background:rgba(255,255,255,0.1); overflow:hidden;">
-          <div style="height:100%; width:${Math.max(4, pct)}%; background:${val === 0 ? '#a3e635' : '#60a5fa'}; border-radius:999px;"></div>
+        <div style="height:10px; border-radius:999px; background:rgba(255,255,255,0.14); overflow:hidden;">
+          <div style="height:100%; width:${Math.max(4, pct)}%; background:${val === 0 ? '#a3e635' : (val <= 3 ? '#60a5fa' : '#fb7185')}; border-radius:999px;"></div>
         </div>
       </div>
     `;
   }).join("");
-})();
+
+  document.getElementById("quantum-svg-wrap").innerHTML = renderQuantumSVG(sweep);
+
+  // Subsystem mix from hospital10_benchmark
+  const h10Rows = (data.hospital10_benchmark && data.hospital10_benchmark.edf && data.hospital10_benchmark.edf.rows) || [];
+  const cats = {};
+  h10Rows.forEach((r) => {
+    const c = r.category || "Hospital";
+    if (!cats[c]) cats[c] = { count: 0, burst: 0 };
+    cats[c].count += 1;
+    cats[c].burst += r.burst;
+  });
+  document.getElementById("subsystem-bars").innerHTML = Object.entries(cats).map(([cat, info]) => `
+    <div style="padding:12px; border-radius:12px; background:rgba(255,255,255,0.16); border:1px solid var(--glass-border);">
+      <div style="font-weight:700; font-size:14px;">${cat}</div>
+      <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); margin-top:4px;">
+        ${info.count} Processes • ${info.burst} CPU ticks
+      </div>
+    </div>
+  `).join("");
+}
+
+loadAnalytics();
 </script>
 {% endblock %}
-

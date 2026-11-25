@@ -373,3 +373,118 @@ html, body {
   gap: 10px;
 }
 
+/* Enhanced Visuals, Gantt Charts & Workbench Controls */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+@media (max-width: 960px) {
+  .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .kpi-strip { grid-template-columns: 1fr; }
+}
+
+.kpi-tile {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kpi-tile .kpi-value {
+  font-size: 26px;
+  margin: 2px 0;
+}
+.kpi-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.gantt-outer {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+}
+
+.gantt-track {
+  display: flex;
+  width: 100%;
+  min-width: 520px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.gantt-seg {
+  padding: 8px 4px;
+  text-align: center;
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  border-right: 1px solid rgba(255, 255, 255, 0.35);
+  transition: filter 0.15s ease, transform 0.15s ease;
+  cursor: default;
+}
+.gantt-seg:hover {
+  filter: brightness(1.12);
+}
+
+.gantt-ruler {
+  display: flex;
+  width: 100%;
+  min-width: 520px;
+  margin-top: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.cat-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--glass-border);
+}
+
+.control-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid var(--glass-border);
+  margin-bottom: 16px;
+}
+
+.range-slider {
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.svg-chart-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.pulse-dot {
+  animation: pulseRing 2s infinite;
+}
+@keyframes pulseRing {
+  0% { opacity: 0.95; }
+  50% { opacity: 0.45; }
+  100% { opacity: 0.95; }
+}
+

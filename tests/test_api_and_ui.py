@@ -96,3 +96,45 @@ def test_api_simulator_endpoints(client):
         assert resp.status_code == 200
         assert "summary" in resp.get_json()
 
+
+def test_seeded_8_hospital_processes_and_workbench_apis(client):
+    """Verify 8 seeded hospital processes, custom simulation, live stepper, analytics, and CSV export."""
+    reqs = client.get("/api/requests").get_json()["requests"]
+    assert len(reqs) >= 8
+    categories = {r["category"] for r in reqs}
+    assert {"Emergency", "ICU Monitoring", "Laboratory", "OP Patient", "Pharmacy"}.issubset(categories)
+
+    # Custom workload simulation
+    sim_resp = client.post(
+        "/api/monitor/simulate",
+        json={
+            "quantum": 2,
+            "aging": 8,
+            "processes": [
+                {"pid": "X1", "name": "OP", "category": "OP Patient", "arrival_time": 0, "priority": 7, "burst_time": 5, "deadline": 20},
+                {"pid": "X2", "name": "Cardiac", "category": "Emergency", "arrival_time": 1, "priority": 1, "burst_time": 3, "deadline": 5},
+            ],
+        },
+    )
+    assert sim_resp.status_code == 200
+    sim_data = sim_resp.get_json()
+    assert "edf" in sim_data["algorithms"]
+    assert "srtf" in sim_data["algorithms"]
+    assert len(sim_data["quantum_sweep"]) == 8
+
+    # Live kernel stepper & policy change
+    ctrl = client.post("/api/scheduler/control", json={"action": "step", "policy": "edf"})
+    assert ctrl.status_code == 200
+    assert ctrl.get_json()["scheduler"]["policy"] == "edf"
+
+    # Extended analytics & CSV export
+    ana = client.get("/api/analytics?workload=hospital10").get_json()
+    assert "extended_benchmark" in ana
+    assert "quantum_sweep" in ana
+
+    csv_resp = client.get("/api/export/csv?workload=case_study")
+    assert csv_resp.status_code == 200
+    assert "text/csv" in csv_resp.content_type
+    assert "preemptive_priority" in csv_resp.get_data(as_text=True)
+
+

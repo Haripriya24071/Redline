@@ -70,23 +70,36 @@ class ScenarioSimulator:
     @staticmethod
     def run_aging_starvation_demo() -> dict[str, Any]:
         """Compare P8 starvation without aging vs dispatch at t=71 with aging (every 10 ticks)."""
-        def run_stream(aging_interval: int) -> int | None:
+        def run_stream(aging_interval: int) -> tuple[int | None, list[dict[str, int]]]:
             sched = Scheduler(policy=SchedulerPolicy.PREEMPTIVE_PRIORITY, aging_interval=aging_interval)
             p8 = Process("P8-LOW", "Planned transfer", 1, 8, 2, "planned_transfer")
+            trace: list[dict[str, int]] = []
             for t in range(120):
                 if t % 4 == 0:
                     sched.admit(Process(f"P1-{t}", "Emergency stream", t, 1, 4, "cardiac_arrest"))
                 if t == 1:
                     sched.admit(p8)
                 sched.step()
-            return p8.first_dispatch_time
+                if t >= 1 and (t % 10 == 1 or p8.first_dispatch_time == t):
+                    trace.append(
+                        {
+                            "tick": t,
+                            "effective_priority": p8.effective_priority,
+                            "wait_ticks": p8.wait_ticks,
+                            "dispatched": 1 if p8.first_dispatch_time is not None else 0,
+                        }
+                    )
+                if p8.completion_time is not None:
+                    break
+            return p8.first_dispatch_time, trace
 
-        no_aging_dispatch = run_stream(0)
-        with_aging_dispatch = run_stream(10)
+        no_aging_dispatch, _ = run_stream(0)
+        with_aging_dispatch, aging_trace = run_stream(10)
         return {
             "scenario": "aging",
             "without_aging_first_dispatch": no_aging_dispatch,
             "with_aging_first_dispatch": with_aging_dispatch,
+            "aging_trace": aging_trace,
             "summary": f"P8 first dispatch — without aging: {no_aging_dispatch or 'starved >120'}; with aging: t={with_aging_dispatch}.",
         }
 

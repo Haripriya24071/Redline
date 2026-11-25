@@ -180,3 +180,52 @@ def test_five_algorithm_test_cases():
     assert "SJF (Non-Preemptive)" in winners
     assert "Round Robin (Q = 3)" in winners
 
+
+def test_extended_benchmark_and_hospital_subsystems():
+    """Verify 10-process hospital workload covers all subsystems and all 8 scheduling policies."""
+    from os_engine.scheduler import (
+        hospital_10_workload,
+        run_extended_benchmark,
+        run_quantum_sweep,
+        simulate_algorithm,
+    )
+
+    h10 = hospital_10_workload()
+    assert len(h10) == 10
+    cats = {p.category for p in h10}
+    assert {"Emergency", "ICU Monitoring", "Laboratory", "OP Patient", "Pharmacy"}.issubset(cats)
+
+    ext = run_extended_benchmark(workload=h10)
+    assert set(ext.keys()) == {
+        "fcfs",
+        "sjf",
+        "srtf",
+        "non_preemptive_priority",
+        "preemptive_priority",
+        "round_robin",
+        "edf",
+        "mlfq",
+    }
+    for metrics in ext.values():
+        assert 0.0 <= metrics["sla_compliance_pct"] <= 100.0
+        assert metrics["cpu_utilization_pct"] > 0.0
+        assert metrics["throughput"] > 0.0
+
+    # SRTF should never have higher average waiting time than non-preemptive SJF
+    assert ext["srtf"]["avg_waiting"] <= ext["sjf"]["avg_waiting"]
+
+    # EDF meets more or equal deadlines than FCFS on tight real-time workload
+    tight = [
+        Process("B1", "Routine OP", 0, 7, 8, "op_triage", "OP Patient", deadline=25),
+        Process("E1", "Cardiac Arrest", 1, 1, 3, "cardiac_arrest", "Emergency", deadline=5),
+    ]
+    edf_res = simulate_algorithm(SchedulerPolicy.EDF, workload=tight)
+    fcfs_res = simulate_algorithm(SchedulerPolicy.FCFS, workload=tight)
+    assert edf_res["deadline_misses"] <= fcfs_res["deadline_misses"]
+    assert edf_res["rows"][1]["deadline_met"] is True
+
+    sweep = run_quantum_sweep(max_q=6)
+    assert len(sweep) == 6
+    assert [s["quantum"] for s in sweep] == [1, 2, 3, 4, 5, 6]
+
+

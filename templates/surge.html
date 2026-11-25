@@ -4,29 +4,28 @@
   <div>
     <h1 class="page-title">Surge Mode</h1>
     <p class="page-desc">Mass-casualty mode: FIFO sub-queue inside Priority 1, aging suspended for P1, and load-balanced
-      distribution.</p>
+      distribution across hospitals.</p>
   </div>
-  <div style="display:flex; gap:12px;">
+  <div style="display:flex; gap:12px; flex-wrap:wrap;">
     <button id="toggle-surge-btn" type="button" class="keycap-btn keycap-coral">Toggle Surge Mode</button>
     <button id="inject-surge-btn" type="button" class="keycap-btn keycap-blue">Simulate 20 P1 Requests</button>
   </div>
 </div>
 
-<div class="grid-2">
+<div class="grid-2" style="margin-bottom:22px;">
   <div class="glass glass-card">
     <h2 style="margin-top:0; font-size:18px;">Surge Policy Status</h2>
     <p id="surge-state-text" style="font-family:var(--font-mono); font-size:15px;"></p>
     <ul style="font-size:14px; color:var(--text-secondary); padding-left:18px;">
       <li>Priority 1 requests served in strict FIFO order.</li>
       <li>Aging suspended for Priority 1 so lower priorities cannot jump queue.</li>
-      <li>Load spread across hospitals with >1 free ICU bed; stale nodes skipped.</li>
+      <li>Load spread across hospitals with &gt;1 free ICU bed; stale nodes skipped.</li>
     </ul>
   </div>
 
   <div class="glass glass-card">
     <h2 style="margin-top:0; font-size:18px;">Load Distribution Simulation</h2>
-    <div id="surge-dist" style="font-family:var(--font-mono); font-size:13px;">Click "Simulate 20 P1 Requests" to run
-      distribution.</div>
+    <div id="surge-dist" style="font-family:var(--font-mono); font-size:13px;">Loading simulation...</div>
   </div>
 </div>
 {% endblock %}
@@ -40,23 +39,42 @@
       : `<span class="badge badge-ok">● Normal Operations</span>`;
   }
 
-  document.getElementById("toggle-surge-btn").addEventListener("click", async () => {
-    await HEMS.api("/api/surge", { method: "POST", body: JSON.stringify({}) });
-    refreshSurge();
-  });
-
-  document.getElementById("inject-surge-btn").addEventListener("click", async () => {
+  async function runSurgeSim() {
     const { data } = await HEMS.api("/api/simulator/run", {
       method: "POST",
       body: JSON.stringify({ scenario: "surge", count: 20 }),
     });
     const dist = data.distribution || {};
+    const maxCount = Math.max(1, ...Object.values(dist));
+    const barsHtml = Object.entries(dist).map(([hid, count]) => {
+      const pct = Math.round((count / maxCount) * 100);
+      return `
+        <div style="margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
+            <span>${hid}</span>
+            <strong>${count} P1 patients</strong>
+          </div>
+          <div style="height:12px; border-radius:999px; background:rgba(255,255,255,0.16); overflow:hidden;">
+            <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,#2563eb,#a3e635); border-radius:999px;"></div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
     document.getElementById("surge-dist").innerHTML = `
-    <p style="color:var(--status-ok);">${data.summary}</p>
-    ${Object.entries(dist).map(([hid, count]) => `<div>${hid}: <strong>${count}</strong> P1 patients assigned</div>`).join("")}
-  `;
+      <p style="color:var(--status-ok); margin-top:0;">${data.summary}</p>
+      ${barsHtml}
+    `;
+  }
+
+  document.getElementById("toggle-surge-btn").addEventListener("click", async () => {
+    await HEMS.api("/api/surge", { method: "POST", body: JSON.stringify({}) });
+    refreshSurge();
   });
 
+  document.getElementById("inject-surge-btn").addEventListener("click", runSurgeSim);
+
   refreshSurge();
+  runSurgeSim();
 </script>
 {% endblock %}

@@ -22,27 +22,51 @@ class ProcessState(str, Enum):
 
 class SchedulerPolicy(str, Enum):
     PREEMPTIVE_PRIORITY = "preemptive_priority"
+    NON_PREEMPTIVE_PRIORITY = "non_preemptive_priority"
     MLFQ = "mlfq"
     FCFS = "fcfs"
     SJF = "sjf"
+    SRTF = "srtf"
     ROUND_ROBIN = "round_robin"
+    EDF = "edf"
 
 
 CASE_PRIORITY_MAP: dict[str, int] = {
     "cardiac_arrest": 1,
     "trauma": 2,
+    "icu_monitoring": 2,
     "stroke": 3,
+    "stat_lab_test": 3,
     "availability_sync": 4,
+    "pharmacy_stat": 4,
     "record_share": 5,
+    "op_triage": 5,
     "specialist_enquiry": 6,
     "planned_transfer": 7,
+    "pharmacy_refill": 7,
     "discharge_back": 8,
+}
+
+CASE_CATEGORY_MAP: dict[str, str] = {
+    "cardiac_arrest": "Emergency",
+    "trauma": "Emergency",
+    "icu_monitoring": "ICU Monitoring",
+    "stroke": "Emergency",
+    "stat_lab_test": "Laboratory",
+    "availability_sync": "Transfer",
+    "pharmacy_stat": "Pharmacy",
+    "record_share": "Laboratory",
+    "op_triage": "OP Patient",
+    "specialist_enquiry": "OP Patient",
+    "planned_transfer": "Transfer",
+    "pharmacy_refill": "Pharmacy",
+    "discharge_back": "OP Patient",
 }
 
 
 @dataclass
 class Process:
-    """Process Control Block (PCB) for a hospital transfer request."""
+    """Process Control Block (PCB) for a hospital activity or transfer request."""
 
     pid: str
     name: str
@@ -50,6 +74,8 @@ class Process:
     priority: int  # 1 = highest, 8 = lowest
     burst_time: int
     case_type: str = "planned_transfer"
+    category: str | None = None
+    deadline: int | None = None
     state: ProcessState = ProcessState.NEW
     remaining_time: int = field(init=False)
     effective_priority: int = field(init=False)
@@ -64,6 +90,11 @@ class Process:
     def __post_init__(self) -> None:
         self.remaining_time = self.burst_time
         self.effective_priority = self.priority
+        if self.category is None:
+            self.category = CASE_CATEGORY_MAP.get(self.case_type, "Hospital Activity")
+        if self.deadline is None:
+            slack_by_prio = {1: 3, 2: 5, 3: 7, 4: 12, 5: 15, 6: 20, 7: 26, 8: 32}
+            self.deadline = self.arrival_time + self.burst_time + slack_by_prio.get(self.priority, 20)
         if self.priority <= 2:
             self.mlfq_level = 0
         elif self.priority <= 6:
@@ -81,6 +112,8 @@ class Process:
             "burst_time": self.burst_time,
             "remaining_time": self.remaining_time,
             "case_type": self.case_type,
+            "category": self.category,
+            "deadline": self.deadline,
             "state": self.state.value,
             "wait_ticks": self.wait_ticks,
             "mlfq_level": self.mlfq_level,
@@ -92,7 +125,7 @@ class Process:
 
 
 class Scheduler:
-    """Stateful OS scheduler supporting Preemptive Priority + Aging and MLFQ."""
+    """Stateful OS scheduler supporting Preemptive/Non-Preemptive Priority + Aging, MLFQ, FCFS, SJF, SRTF, RR, and EDF."""
 
     def __init__(
         self,
@@ -103,9 +136,10 @@ class Scheduler:
     ) -> None:
         self.policy = policy
         self.aging_interval = aging_interval
-        self.quantum = quantum
+        self.quantum = max(1, quantum)
         self.surge_mode = surge_mode
         self.clock = 0
+        self.idle_ticks = 0
         self.processes: dict[str, Process] = {}
         self.ready_queue: list[str] = []
         self.waiting_queue: list[str] = []
@@ -119,7 +153,7 @@ class Scheduler:
         proc.state = ProcessState.READY
         self.processes[proc.pid] = proc
         self.ready_queue.append(proc.pid)
-        self._log_decision("ADMIT", proc.pid, f"Priority {proc.effective_priority} admitted to READY")
+        self._log_decision("ADMIT", proc.pid, f"P{proc.effective_priority} ({proc.category}) admitted to READY")
         self._maybe_preempt(proc.pid)
 
     def _log_decision(self, action: str, pid: str, detail: str) -> None:
@@ -136,13 +170,25 @@ class Scheduler:
         if self.running_pid is None or self.policy not in (
             SchedulerPolicy.PREEMPTIVE_PRIORITY,
             SchedulerPolicy.MLFQ,
+            SchedulerPolicy.SRTF,
+            SchedulerPolicy.EDF,
         ):
             return
         running = self.processes[self.running_pid]
         candidate = self.processes[candidate_pid]
         should_preempt = False
+        reason = ""
         if self.policy == SchedulerPolicy.PREEMPTIVE_PRIORITY:
             should_preempt = candidate.effective_priority < running.effective_priority
+            reason = f"P{candidate.effective_priority} < P{running.effective_priority}"
+        elif self.policy == SchedulerPolicy.SRTF:
+            should_preempt = candidate.remaining_time < running.remaining_time
+            reason = f"RT {candidate.remaining_time} < RT {running.remaining_time}"
+        elif self.policy == SchedulerPolicy.EDF:
+            cand_dl = candidate.deadline if candidate.deadline is not None else 99999
+            run_dl = running.deadline if running.deadline is not None else 99999
+            should_preempt = cand_dl < run_dl
+            reason = f"DL {cand_dl} < DL {run_dl}"
         elif self.policy == SchedulerPolicy.MLFQ:
             should_preempt = (
                 candidate.mlfq_level < running.mlfq_level
@@ -151,6 +197,8 @@ class Scheduler:
                     and candidate.effective_priority < running.effective_priority
                 )
             )
+            reason = f"Q{candidate.mlfq_level}/P{candidate.effective_priority}"
+
         if should_preempt:
             running.state = ProcessState.READY
             running.quantum_used = 0
@@ -160,7 +208,7 @@ class Scheduler:
             self._log_decision(
                 "PREEMPT",
                 candidate.pid,
-                f"Pre-empted {running.pid} (P{running.effective_priority}) for {candidate.pid} (P{candidate.effective_priority})",
+                f"Pre-empted {running.pid} for {candidate.pid} ({reason})",
             )
 
     def move_to_waiting(self, pid: str, reason: str) -> None:
@@ -205,6 +253,20 @@ class Scheduler:
                 self.ready_queue,
                 key=lambda pid: (self.processes[pid].burst_time, self.processes[pid].arrival_time),
             )
+        if self.policy == SchedulerPolicy.SRTF:
+            return min(
+                self.ready_queue,
+                key=lambda pid: (self.processes[pid].remaining_time, self.processes[pid].arrival_time),
+            )
+        if self.policy == SchedulerPolicy.EDF:
+            return min(
+                self.ready_queue,
+                key=lambda pid: (
+                    self.processes[pid].deadline if self.processes[pid].deadline is not None else 99999,
+                    self.processes[pid].effective_priority,
+                    self.processes[pid].arrival_time,
+                ),
+            )
         if self.policy == SchedulerPolicy.ROUND_ROBIN:
             return self.ready_queue[0]
         if self.policy == SchedulerPolicy.MLFQ:
@@ -216,7 +278,7 @@ class Scheduler:
                     self.processes[pid].arrival_time,
                 ),
             )
-        # Default: PREEMPTIVE_PRIORITY
+        # PREEMPTIVE_PRIORITY and NON_PREEMPTIVE_PRIORITY
         return min(
             self.ready_queue,
             key=lambda pid: (
@@ -308,6 +370,7 @@ class Scheduler:
                         "start": self.clock,
                         "end": self.clock + 1,
                         "priority": proc.priority,
+                        "category": proc.category,
                     }
                 )
 
@@ -316,22 +379,30 @@ class Scheduler:
                 proc.completion_time = self.clock + 1
                 self._log_decision("TERMINATE", proc.pid, f"Completed at t={self.clock + 1}")
                 self.running_pid = None
+        else:
+            self.idle_ticks += 1
 
         self.clock += 1
         return event
 
     def snapshot(self) -> dict[str, Any]:
         """Return live state for /api/monitor."""
+        active_ticks = max(0, self.clock - self.idle_ticks)
+        cpu_util = round((active_ticks / self.clock) * 100, 1) if self.clock > 0 else 0.0
         return {
             "policy": self.policy.value,
+            "quantum": self.quantum,
+            "aging_interval": self.aging_interval,
             "surge_mode": self.surge_mode,
             "clock": self.clock,
+            "idle_ticks": self.idle_ticks,
+            "cpu_utilization_pct": cpu_util,
             "running": self.processes[self.running_pid].to_dict() if self.running_pid else None,
             "ready_queue": [self.processes[pid].to_dict() for pid in self.ready_queue],
             "waiting_queue": [self.processes[pid].to_dict() for pid in self.waiting_queue],
             "all_processes": [p.to_dict() for p in self.processes.values()],
-            "timeline": self.timeline[-40:],
-            "decisions": self.decisions[-20:],
+            "timeline": self.timeline[-60:],
+            "decisions": self.decisions[-30:],
             "context_switches": self.context_switches,
         }
 
@@ -350,6 +421,39 @@ def default_workload() -> list[Process]:
     ]
 
 
+def hospital_10_workload() -> list[Process]:
+    """Return a comprehensive 10-process Case Study 2 workload covering all 5 hospital subsystems."""
+    return [
+        Process("H1", "OP Walk-in Registration", 0, 6, 4, "op_triage", "OP Patient", deadline=28),
+        Process("H2", "Routine Lab CBC Batch", 0, 5, 6, "record_share", "Laboratory", deadline=26),
+        Process("H3", "Pharmacy Ward Refill", 1, 7, 3, "pharmacy_refill", "Pharmacy", deadline=32),
+        Process("H4", "ICU Ventilator Telemetry", 2, 2, 4, "icu_monitoring", "ICU Monitoring", deadline=9),
+        Process("H5", "Cardiac Arrest Code Blue", 3, 1, 6, "cardiac_arrest", "Emergency", deadline=10),
+        Process("H6", "Stat ABG Blood Gas Lab", 4, 3, 3, "stat_lab_test", "Laboratory", deadline=12),
+        Process("H7", "Road Trauma Multi-Organ", 5, 2, 5, "trauma", "Emergency", deadline=14),
+        Process("H8", "ICU Epinephrine Stat", 6, 4, 2, "pharmacy_stat", "Pharmacy", deadline=16),
+        Process("H9", "Stroke Thrombolysis Unit", 7, 3, 4, "stroke", "Emergency", deadline=18),
+        Process("H10", "OP Discharge Summary", 8, 8, 3, "discharge_back", "OP Patient", deadline=38),
+    ]
+
+
+def clone_workload(procs: list[Process]) -> list[Process]:
+    """Create fresh Process instances from an existing workload list."""
+    return [
+        Process(
+            pid=p.pid,
+            name=p.name,
+            arrival_time=p.arrival_time,
+            priority=p.priority,
+            burst_time=p.burst_time,
+            case_type=p.case_type,
+            category=p.category,
+            deadline=p.deadline,
+        )
+        for p in procs
+    ]
+
+
 def simulate_algorithm(
     policy: SchedulerPolicy,
     workload: list[Process] | None = None,
@@ -357,17 +461,18 @@ def simulate_algorithm(
     aging_interval: int = 0,
 ) -> dict[str, Any]:
     """Run a full simulation of one algorithm and return metrics + Gantt chart."""
-    procs = workload if workload is not None else default_workload()
+    procs = clone_workload(workload) if workload is not None else default_workload()
     sched = Scheduler(policy=policy, aging_interval=aging_interval, quantum=quantum)
     pending = sorted(procs, key=lambda p: p.arrival_time)
     total_burst = sum(p.burst_time for p in procs)
+    max_arrival = max((p.arrival_time for p in procs), default=0)
 
     while len([p for p in sched.processes.values() if p.state == ProcessState.TERMINATED]) < len(procs):
         arriving = [p for p in pending if p.arrival_time == sched.clock]
         for p in arriving:
             sched.admit(p)
         sched.step()
-        if sched.clock > total_burst + 200:
+        if sched.clock > max_arrival + total_burst + 200:
             break
 
     rows = []
@@ -376,33 +481,47 @@ def simulate_algorithm(
         tat = ct - p.arrival_time
         wt = tat - p.burst_time
         rt = (p.first_dispatch_time if p.first_dispatch_time is not None else 0) - p.arrival_time
+        dl = p.deadline if p.deadline is not None else (p.arrival_time + p.burst_time + 20)
+        slack = dl - ct
         rows.append(
             {
                 "pid": p.pid,
                 "name": p.name,
+                "category": p.category,
                 "arrival": p.arrival_time,
                 "priority": p.priority,
                 "burst": p.burst_time,
+                "deadline": dl,
                 "completion": ct,
                 "turnaround": tat,
                 "waiting": wt,
                 "response": rt,
+                "slack": slack,
+                "deadline_met": ct <= dl,
             }
         )
 
-    critical = [r for r in rows if r["pid"] in ("T6", "T7", "T8")]
+    critical = [r for r in rows if r["priority"] <= 3 or r["pid"] in ("T6", "T7", "T8")]
     n = len(rows) or 1
     cn = len(critical) or 1
+    total_time = max((r["completion"] for r in rows), default=1) or 1
+    deadline_misses = sum(1 for r in rows if not r["deadline_met"])
     return {
         "policy": policy.value,
+        "quantum": quantum,
         "rows": rows,
         "gantt": sched.timeline,
         "avg_waiting": round(sum(r["waiting"] for r in rows) / n, 2),
         "avg_turnaround": round(sum(r["turnaround"] for r in rows) / n, 2),
         "avg_response": round(sum(r["response"] for r in rows) / n, 2),
-        "critical_avg_waiting": round(sum(r["waiting"] for r in critical) / cn, 2),
-        "critical_avg_response": round(sum(r["response"] for r in critical) / cn, 2),
+        "critical_avg_waiting": round(sum(r["waiting"] for r in critical) / cn, 2) if critical else 0.0,
+        "critical_avg_response": round(sum(r["response"] for r in critical) / cn, 2) if critical else 0.0,
         "context_switches": sched.context_switches,
+        "total_time": total_time,
+        "cpu_utilization_pct": round((total_burst / total_time) * 100, 1),
+        "throughput": round(len(rows) / total_time, 3),
+        "deadline_misses": deadline_misses,
+        "sla_compliance_pct": round(((len(rows) - deadline_misses) / n) * 100, 1),
     }
 
 
@@ -414,4 +533,43 @@ def run_benchmark_suite() -> dict[str, Any]:
         "preemptive_priority": simulate_algorithm(SchedulerPolicy.PREEMPTIVE_PRIORITY),
         "round_robin": simulate_algorithm(SchedulerPolicy.ROUND_ROBIN, quantum=3),
     }
+
+
+def run_extended_benchmark(
+    workload: list[Process] | None = None,
+    quantum: int = 3,
+    aging_interval: int = 10,
+) -> dict[str, Any]:
+    """Compare all 8 scheduling algorithms including SRTF, Non-Preemptive Priority, EDF, and MLFQ."""
+    base = workload if workload is not None else hospital_10_workload()
+    return {
+        "fcfs": simulate_algorithm(SchedulerPolicy.FCFS, workload=base),
+        "sjf": simulate_algorithm(SchedulerPolicy.SJF, workload=base),
+        "srtf": simulate_algorithm(SchedulerPolicy.SRTF, workload=base),
+        "non_preemptive_priority": simulate_algorithm(SchedulerPolicy.NON_PREEMPTIVE_PRIORITY, workload=base, aging_interval=aging_interval),
+        "preemptive_priority": simulate_algorithm(SchedulerPolicy.PREEMPTIVE_PRIORITY, workload=base, aging_interval=aging_interval),
+        "round_robin": simulate_algorithm(SchedulerPolicy.ROUND_ROBIN, workload=base, quantum=quantum),
+        "edf": simulate_algorithm(SchedulerPolicy.EDF, workload=base),
+        "mlfq": simulate_algorithm(SchedulerPolicy.MLFQ, workload=base, aging_interval=aging_interval),
+    }
+
+
+def run_quantum_sweep(workload: list[Process] | None = None, max_q: int = 8) -> list[dict[str, Any]]:
+    """Evaluate Round Robin across Time Quantums Q=1..max_q for sensitivity analysis."""
+    base = workload if workload is not None else default_workload()
+    results = []
+    for q in range(1, max_q + 1):
+        sim = simulate_algorithm(SchedulerPolicy.ROUND_ROBIN, workload=base, quantum=q)
+        results.append(
+            {
+                "quantum": q,
+                "avg_waiting": sim["avg_waiting"],
+                "avg_turnaround": sim["avg_turnaround"],
+                "avg_response": sim["avg_response"],
+                "critical_avg_response": sim["critical_avg_response"],
+                "context_switches": sim["context_switches"],
+                "sla_compliance_pct": sim["sla_compliance_pct"],
+            }
+        )
+    return results
 

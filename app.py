@@ -6,19 +6,24 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request
 
 from os_engine.banker import default_hospital_b_banker
 from os_engine.deadlock import ResourceAllocationGraph
 from os_engine.matcher import match_hospitals
 from os_engine.reservation import ConflictError, HoldExpiredError, ReservationEngine
 from os_engine.scheduler import (
+    CASE_CATEGORY_MAP,
     CASE_PRIORITY_MAP,
     Process,
     ProcessState,
     Scheduler,
     SchedulerPolicy,
+    default_workload,
+    hospital_10_workload,
     run_benchmark_suite,
+    run_extended_benchmark,
+    run_quantum_sweep,
     simulate_algorithm,
 )
 from os_engine.simulator import ScenarioSimulator
@@ -158,39 +163,50 @@ class HEMSState:
         self.audit_log: list[dict[str, Any]] = []
         self.surge_mode = False
 
-        # Seed 3 sample requests so dashboard & tracker look alive immediately
+        # Seed 8 hospital activity processes covering Emergency, ICU Monitoring, Lab, OP, Pharmacy & Transfers
         self._seed_sample_requests()
 
     def _seed_sample_requests(self) -> None:
         samples = [
-            ("REQ-1001", "HOSP-JAIN", "cardiac_arrest", ["ICU", "VENTILATOR"], "PAT-8821", True),
-            ("REQ-1002", "HOSP-JAIN", "stroke", ["ICU", "NEURO"], "PAT-4410", True),
-            ("REQ-1003", "HOSP-JAIN", "planned_transfer", ["EMERGENCY"], "PAT-1109", True),
+            ("REQ-1001", "HOSP-JAIN", "op_triage", ["EMERGENCY"], "PAT-1102", True, 0, 4, "OP Patient", "OP Walk-in Triage"),
+            ("REQ-1002", "HOSP-JAIN", "planned_transfer", ["EMERGENCY"], "PAT-1109", True, 0, 3, "Transfer", "Planned Dialysis Transfer"),
+            ("REQ-1003", "HOSP-JAIN", "pharmacy_stat", ["SPECIALIST"], "PAT-3304", True, 1, 2, "Pharmacy", "ICU Epinephrine Stat"),
+            ("REQ-1004", "HOSP-JAIN", "icu_monitoring", ["ICU"], "PAT-5501", True, 1, 4, "ICU Monitoring", "ICU Ventilator Telemetry"),
+            ("REQ-1005", "HOSP-JAIN", "stat_lab_test", ["EMERGENCY"], "PAT-6620", True, 2, 3, "Laboratory", "Stat ABG Blood Gas Lab"),
+            ("REQ-1006", "HOSP-JAIN", "stroke", ["ICU", "NEURO"], "PAT-4410", True, 3, 5, "Emergency", "Stroke Neuro-Unit"),
+            ("REQ-1007", "HOSP-JAIN", "trauma", ["ICU", "VENTILATOR"], "PAT-7218", True, 4, 6, "Emergency", "Road Trauma ICU + Vent"),
+            ("REQ-1008", "HOSP-JAIN", "cardiac_arrest", ["ICU", "VENTILATOR"], "PAT-8821", True, 5, 7, "Emergency", "Cardiac Arrest Code Blue"),
         ]
-        for rid, from_h, ctype, facs, phash, consent in samples:
+        for rid, from_h, ctype, facs, phash, consent, arr_t, burst_t, cat, label in samples:
             prio = CASE_PRIORITY_MAP.get(ctype, 5)
             proc = Process(
                 pid=rid,
-                name=f"{ctype.replace('_', ' ').title()} ({from_h})",
-                arrival_time=self.scheduler.clock,
+                name=f"{label} ({from_h})",
+                arrival_time=arr_t,
                 priority=prio,
-                burst_time=5,
+                burst_time=burst_t,
                 case_type=ctype,
+                category=cat,
             )
             self.scheduler.admit(proc)
-            self.scheduler.step()
+            if rid in ("REQ-1001", "REQ-1003", "REQ-1005"):
+                self.scheduler.step()
             self.requests[rid] = {
                 "request_id": rid,
                 "from_hospital": from_h,
                 "case_type": ctype,
+                "category": cat,
                 "priority": prio,
+                "burst_time": burst_t,
+                "arrival_time": arr_t,
+                "deadline": proc.deadline,
                 "facilities_needed": facs,
                 "patient_hash": phash,
                 "consent_given": consent,
                 "state": proc.state.value,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "timeline": [
-                    {"state": "NEW", "at": datetime.now(timezone.utc).isoformat(), "note": "Request submitted"},
+                    {"state": "NEW", "at": datetime.now(timezone.utc).isoformat(), "note": f"{cat} task submitted"},
                     {"state": "READY", "at": datetime.now(timezone.utc).isoformat(), "note": f"Assigned Priority {prio}"},
                 ],
                 "hold_ids": [],
@@ -198,11 +214,11 @@ class HEMSState:
                 "ambulance_eta_min": None,
             }
 
-        # Create one active parallel referral for REQ-1001 so Coordination & Tracker have live holds
-        holds = self.workers.send_parallel_referral("REQ-1001", ["HOSP-DSH", "HOSP-BGS"], ["ICU", "VENTILATOR"], batch_size=2)
-        self.requests["REQ-1001"]["hold_ids"] = [h.hold_id for h in holds]
-        self.requests["REQ-1001"]["state"] = "WAITING"
-        self.scheduler.move_to_waiting("REQ-1001", "Waiting for parallel referral reply")
+        # Create one active parallel referral for REQ-1008 so Coordination & Tracker have live holds
+        holds = self.workers.send_parallel_referral("REQ-1008", ["HOSP-DSH", "HOSP-BGS"], ["ICU", "VENTILATOR"], batch_size=2)
+        self.requests["REQ-1008"]["hold_ids"] = [h.hold_id for h in holds]
+        self.requests["REQ-1008"]["state"] = "WAITING"
+        self.scheduler.move_to_waiting("REQ-1008", "Waiting for parallel referral reply")
 
     def log_audit(self, actor_role: str, action: str, detail: str, break_glass: bool = False) -> None:
         self.audit_log.append(
@@ -359,14 +375,24 @@ def api_requests():
         ), 409
 
     rid = f"REQ-{1000 + len(state.requests) + 1}"
-    prio = CASE_PRIORITY_MAP.get(case_type, 5)
+    prio = int(data.get("priority", CASE_PRIORITY_MAP.get(case_type, 5)))
+    prio = max(1, min(8, prio))
+    category = data.get("category") or CASE_CATEGORY_MAP.get(case_type, "Hospital Activity")
+    arrival_t = int(data.get("arrival_time", state.scheduler.clock))
+    burst_t = max(1, int(data.get("burst_time", 5)))
+    deadline_val = data.get("deadline")
+    deadline_int = int(deadline_val) if deadline_val not in (None, "") else None
+    proc_name = data.get("name") or f"{case_type.replace('_', ' ').title()} ({from_hospital})"
+
     proc = Process(
         pid=rid,
-        name=f"{case_type.replace('_', ' ').title()} ({from_hospital})",
-        arrival_time=state.scheduler.clock,
+        name=proc_name,
+        arrival_time=arrival_t,
         priority=prio,
-        burst_time=int(data.get("burst_time", 5)),
+        burst_time=burst_t,
         case_type=case_type,
+        category=category,
+        deadline=deadline_int,
     )
     state.scheduler.admit(proc)
     state.scheduler.step()
@@ -375,14 +401,18 @@ def api_requests():
         "request_id": rid,
         "from_hospital": from_hospital,
         "case_type": case_type,
+        "category": category,
         "priority": prio,
+        "burst_time": burst_t,
+        "arrival_time": arrival_t,
+        "deadline": proc.deadline,
         "facilities_needed": facilities_needed,
         "patient_hash": patient_hash,
         "consent_given": consent_given,
         "state": proc.state.value,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "timeline": [
-            {"state": "NEW", "at": datetime.now(timezone.utc).isoformat(), "note": "Request created"},
+            {"state": "NEW", "at": datetime.now(timezone.utc).isoformat(), "note": f"{category} request created"},
             {"state": "READY", "at": datetime.now(timezone.utc).isoformat(), "note": f"Priority {prio} assigned"},
         ],
         "hold_ids": [],
@@ -498,38 +528,60 @@ def api_respond_transfer(hold_id: str):
         return jsonify({"error": str(exc)}), 410
 
 
+def _resolve_workload(workload_name: str) -> list[Process]:
+    if workload_name == "case_study":
+        return default_workload()
+    if workload_name == "hospital10":
+        return hospital_10_workload()
+    live_procs = list(state.scheduler.processes.values())
+    if not live_procs:
+        return default_workload()
+    return [
+        Process(
+            pid=p.pid,
+            name=p.name,
+            arrival_time=p.arrival_time,
+            priority=p.priority,
+            burst_time=p.burst_time,
+            case_type=p.case_type,
+            category=p.category,
+            deadline=p.deadline,
+        )
+        for p in live_procs
+    ]
+
+
 @app.route("/api/monitor")
 def api_monitor():
     state.workers.sweep_expired_and_escalate()
 
-    # Run all 4 scheduling algorithms on the LIVE processes currently in the system
-    live_procs = list(state.scheduler.processes.values())
-    def make_fresh_procs() -> list[Process]:
-        return [
-            Process(
-                pid=p.pid,
-                name=p.name,
-                arrival_time=p.arrival_time,
-                priority=p.priority,
-                burst_time=p.burst_time,
-                case_type=p.case_type,
-            )
-            for p in live_procs
-        ]
+    quantum = max(1, min(10, int(request.args.get("quantum", 3))))
+    aging = max(0, min(30, int(request.args.get("aging", 10))))
+    workload_name = request.args.get("workload", "live")
+    selected_procs = _resolve_workload(workload_name)
 
-    live_algorithms = {}
-    if live_procs:
-        live_algorithms = {
-            "fcfs": simulate_algorithm(SchedulerPolicy.FCFS, workload=make_fresh_procs()),
-            "sjf": simulate_algorithm(SchedulerPolicy.SJF, workload=make_fresh_procs()),
-            "preemptive_priority": simulate_algorithm(SchedulerPolicy.PREEMPTIVE_PRIORITY, workload=make_fresh_procs(), aging_interval=10),
-            "round_robin": simulate_algorithm(SchedulerPolicy.ROUND_ROBIN, workload=make_fresh_procs(), quantum=3),
-        }
+    live_algorithms = run_extended_benchmark(
+        workload=selected_procs,
+        quantum=quantum,
+        aging_interval=aging,
+    )
+    quantum_sweep = run_quantum_sweep(workload=selected_procs, max_q=8)
+
+    category_breakdown: dict[str, dict[str, int]] = {}
+    for p in selected_procs:
+        cat = p.category or "Hospital Activity"
+        entry = category_breakdown.setdefault(cat, {"count": 0, "total_burst": 0})
+        entry["count"] += 1
+        entry["total_burst"] += p.burst_time
 
     return jsonify(
         {
             "scheduler": state.scheduler.snapshot(),
+            "workload_name": workload_name,
+            "workload_processes": [p.to_dict() for p in selected_procs],
             "live_algorithms": live_algorithms,
+            "quantum_sweep": quantum_sweep,
+            "category_breakdown": category_breakdown,
             "semaphores": state.reservation.snapshot_semaphores(),
             "holds": [h.to_dict() for h in state.reservation.holds.values()],
             "banker": state.banker.snapshot(),
@@ -542,14 +594,128 @@ def api_monitor():
     )
 
 
+@app.route("/api/monitor/simulate", methods=["POST"])
+def api_monitor_simulate_custom():
+    """Run all 8 scheduling algorithms on a user-supplied list of hospital activity processes."""
+    data = request.get_json(silent=True) or {}
+    raw_procs = data.get("processes") or []
+    quantum = max(1, min(10, int(data.get("quantum", 3))))
+    aging = max(0, min(30, int(data.get("aging", 10))))
+
+    if not raw_procs:
+        return jsonify({"error": "At least one process is required."}), 400
+
+    procs: list[Process] = []
+    for idx, item in enumerate(raw_procs):
+        ctype = str(item.get("case_type", "planned_transfer"))
+        prio = max(1, min(8, int(item.get("priority", CASE_PRIORITY_MAP.get(ctype, 5)))))
+        arr = max(0, int(item.get("arrival_time", 0)))
+        burst = max(1, min(50, int(item.get("burst_time", 4))))
+        dl_raw = item.get("deadline")
+        dl = int(dl_raw) if dl_raw not in (None, "") else None
+        procs.append(
+            Process(
+                pid=str(item.get("pid") or f"P{idx + 1}"),
+                name=str(item.get("name") or f"Activity {idx + 1}"),
+                arrival_time=arr,
+                priority=prio,
+                burst_time=burst,
+                case_type=ctype,
+                category=str(item.get("category") or CASE_CATEGORY_MAP.get(ctype, "Hospital Activity")),
+                deadline=dl,
+            )
+        )
+
+    algorithms = run_extended_benchmark(workload=procs, quantum=quantum, aging_interval=aging)
+    sweep = run_quantum_sweep(workload=procs, max_q=8)
+    return jsonify(
+        {
+            "processes": [p.to_dict() for p in procs],
+            "algorithms": algorithms,
+            "quantum_sweep": sweep,
+        }
+    )
+
+
+@app.route("/api/scheduler/control", methods=["POST"])
+def api_scheduler_control():
+    """Interactive live kernel control: step, run_5, set_policy."""
+    data = request.get_json(silent=True) or {}
+    action = data.get("action", "step")
+
+    if "policy" in data:
+        try:
+            state.scheduler.policy = SchedulerPolicy(data["policy"])
+        except ValueError:
+            return jsonify({"error": f"Unsupported policy {data['policy']}"}), 400
+    if "quantum" in data:
+        state.scheduler.quantum = max(1, min(10, int(data["quantum"])))
+    if "aging_interval" in data:
+        state.scheduler.aging_interval = max(0, min(30, int(data["aging_interval"])))
+
+    events = []
+    if action == "step":
+        ev = state.scheduler.step()
+        if ev:
+            events.append(ev)
+    elif action == "run_5":
+        for _ in range(5):
+            ev = state.scheduler.step()
+            if ev:
+                events.append(ev)
+    elif action == "set_policy":
+        state.log_audit("coordinator", "POLICY_CHANGE", f"Kernel policy -> {state.scheduler.policy.value}")
+
+    # Sync request states with PCB states
+    for rid, proc in state.scheduler.processes.items():
+        if rid in state.requests:
+            state.requests[rid]["state"] = proc.state.value
+
+    return jsonify({"events": events, "scheduler": state.scheduler.snapshot()})
+
+
 @app.route("/api/analytics")
 def api_analytics():
+    quantum = max(1, min(10, int(request.args.get("quantum", 3))))
+    aging = max(0, min(30, int(request.args.get("aging", 10))))
+    workload_name = request.args.get("workload", "case_study")
+    selected = _resolve_workload(workload_name)
     return jsonify(
         {
             "benchmark": run_benchmark_suite(),
+            "extended_benchmark": run_extended_benchmark(workload=selected, quantum=quantum, aging_interval=aging),
+            "hospital10_benchmark": run_extended_benchmark(workload=hospital_10_workload(), quantum=quantum, aging_interval=aging),
+            "quantum_sweep": run_quantum_sweep(workload=selected, max_q=8),
+            "workload_name": workload_name,
             "requests_count": len(state.requests),
             "hospitals_count": len(state.hospitals),
         }
+    )
+
+
+@app.route("/api/export/csv")
+def api_export_csv():
+    """Export scheduling benchmark table as downloadable CSV."""
+    workload_name = request.args.get("workload", "live")
+    quantum = max(1, min(10, int(request.args.get("quantum", 3))))
+    aging = max(0, min(30, int(request.args.get("aging", 10))))
+    selected = _resolve_workload(workload_name)
+    results = run_extended_benchmark(workload=selected, quantum=quantum, aging_interval=aging)
+
+    lines = [
+        "Algorithm,Avg_Waiting,Avg_Turnaround,Avg_Response,Critical_Avg_Wait,Critical_Avg_Response,Context_Switches,CPU_Util_Pct,Throughput,Deadline_Misses,SLA_Compliance_Pct"
+    ]
+    for key, res in results.items():
+        lines.append(
+            f"{key},{res['avg_waiting']},{res['avg_turnaround']},{res['avg_response']},"
+            f"{res['critical_avg_waiting']},{res['critical_avg_response']},{res['context_switches']},"
+            f"{res['cpu_utilization_pct']},{res['throughput']},{res['deadline_misses']},{res['sla_compliance_pct']}"
+        )
+    csv_body = "\n".join(lines) + "\n"
+    return Response(
+        csv_body,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=redline_{workload_name}_scheduling_report.csv"},
     )
 
 
