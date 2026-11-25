@@ -70,7 +70,7 @@ The following additional OS and clinical-systems enhancements are recommended fo
 - `templates/` & `static/` — Liquid Glass UI, SVG charts/maps, tactile keycaps, Light/Dark themes, and EN/HI/KN i18n
 - `tests/` — Automated pytest suite (`test_os_engine.py`, `test_api_and_ui.py`)
 - `contract.md` — Frozen API contract & data model specification
-- `docs/` — Accessibility report (`a11y_report.md`) and OS Case Study Report (`Redline_OS_Case_Study_Report_BW.pdf` / `.docx`)
+- `docs/` — Accessibility report (`a11y_report.md`), generator scripts (`generate_figures.py`, `build_report.py`), color diagrams (`figures_color/`), and updated Case Study 2 Reports (`Redline_OS_Case_Study_Report.pdf` / `.docx`)
 
 ## 5. Run Instructions
 ```bash
