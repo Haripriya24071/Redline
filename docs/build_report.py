@@ -1,4 +1,4 @@
-"""Build publication-grade color PDF and DOCX reports for Redline (HEMS-Link) Case Study 2."""
+"""Build clean academic PDF and DOCX reports for Redline (HEMS-Link) Case Study 2."""
 
 from __future__ import annotations
 
@@ -10,11 +10,12 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch, mm
 from reportlab.platypus import (
+    HRFlowable,
     Image as RLImage,
     KeepTogether,
     PageBreak,
@@ -29,7 +30,7 @@ from docx import Document
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement, parse_xml
-from docx.oxml.ns import nsdecls, qn
+from docx.oxml.ns import nsdecls
 from docx.shared import Inches, Pt, RGBColor
 
 from os_engine.scheduler import default_workload, hospital_10_workload, run_extended_benchmark, run_quantum_sweep
@@ -40,22 +41,22 @@ FIG_DIR = os.path.join(DOCS_DIR, "figures_color")
 PDF_PATH = os.path.join(DOCS_DIR, "Redline_OS_Case_Study_Report.pdf")
 DOCX_PATH = os.path.join(DOCS_DIR, "Redline_OS_Case_Study_Report.docx")
 
-# Palette
-C_NAVY = colors.HexColor("#0F2942")
-C_TEAL = colors.HexColor("#0D7377")
-C_TBL_HDR = colors.HexColor("#1B3B5A")
-C_ZEBRA = colors.HexColor("#F4F8FB")
-C_BORDER = colors.HexColor("#CBD5E1")
-C_TEXT = colors.HexColor("#1E293B")
-C_MUTED = colors.HexColor("#475569")
-C_CALLOUT_BG = colors.HexColor("#EFF6FF")
-C_CALLOUT_WARN = colors.HexColor("#FEF3C7")
-C_CALLOUT_OK = colors.HexColor("#DCFCE7")
+# Subtle neutral grey academic palette
+C_INK = colors.HexColor("#111827")
+C_SUBINK = colors.HexColor("#374151")
+C_TEXT = colors.HexColor("#1F2937")
+C_MUTED = colors.HexColor("#4B5563")
+C_TBL_HDR = colors.HexColor("#E5E7EB")
+C_TBL_HDR_LINE = colors.HexColor("#9CA3AF")
+C_ZEBRA = colors.HexColor("#F9FAFB")
+C_BORDER = colors.HexColor("#D1D5DB")
+C_CALLOUT_BG = colors.HexColor("#F3F4F6")
+C_CALLOUT_BAR = colors.HexColor("#6B7280")
 
-D_NAVY = RGBColor(0x0F, 0x29, 0x42)
-D_TEAL = RGBColor(0x0D, 0x73, 0x77)
-D_TEXT = RGBColor(0x1E, 0x29, 0x3B)
-D_MUTED = RGBColor(0x47, 0x55, 0x69)
+D_INK = RGBColor(0x11, 0x18, 0x27)
+D_SUBINK = RGBColor(0x37, 0x41, 0x51)
+D_TEXT = RGBColor(0x1F, 0x29, 0x37)
+D_MUTED = RGBColor(0x4B, 0x55, 0x63)
 
 GROUP_MEMBERS = (
     "A B Shree Vaibhavi — 25BTRCA001\n"
@@ -103,26 +104,26 @@ def build_pdf(m: dict) -> None:
         topMargin=18 * mm,
         bottomMargin=18 * mm,
         title="Redline (HEMS-Link) — Operating Systems Case Study 2 Report",
-        author="R Hari Priya et al. — Jain University",
+        author="Group 25BTRCA — Jain University",
     )
     avail_w = A4[0] - 34 * mm
 
     base = getSampleStyleSheet()
-    s_uni = ParagraphStyle("Uni", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=14, leading=18, alignment=TA_CENTER, textColor=C_NAVY)
-    s_dept = ParagraphStyle("Dept", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=11, leading=15, alignment=TA_CENTER, textColor=C_TEAL)
+    s_uni = ParagraphStyle("Uni", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=14, leading=18, alignment=TA_CENTER, textColor=C_INK)
+    s_dept = ParagraphStyle("Dept", parent=base["Normal"], fontName="Helvetica", fontSize=11, leading=15, alignment=TA_CENTER, textColor=C_SUBINK)
     s_tag = ParagraphStyle("Tag", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=10, leading=14, alignment=TA_CENTER, textColor=C_MUTED)
-    s_title = ParagraphStyle("TitleMain", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=20, leading=24, alignment=TA_CENTER, textColor=C_NAVY)
-    s_sub = ParagraphStyle("SubMain", parent=base["Normal"], fontName="Helvetica", fontSize=11, leading=15, alignment=TA_CENTER, textColor=C_MUTED)
+    s_title = ParagraphStyle("TitleMain", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=19.5, leading=24, alignment=TA_CENTER, textColor=C_INK)
+    s_subtitle = ParagraphStyle("SubTitle", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=12.5, leading=17, alignment=TA_CENTER, textColor=C_SUBINK)
+    s_sub = ParagraphStyle("SubMain", parent=base["Normal"], fontName="Helvetica", fontSize=10.2, leading=14.5, alignment=TA_CENTER, textColor=C_MUTED)
 
-    s_h1 = ParagraphStyle("H1", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=13.5, leading=17, textColor=C_NAVY, spaceBefore=12, spaceAfter=5)
-    s_h2 = ParagraphStyle("H2", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=11, leading=14, textColor=C_TEAL, spaceBefore=9, spaceAfter=4)
+    s_h1 = ParagraphStyle("H1", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=12.8, leading=16.5, textColor=C_INK, spaceBefore=12, spaceAfter=5, keepWithNext=True)
+    s_h2 = ParagraphStyle("H2", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=10.6, leading=14, textColor=C_SUBINK, spaceBefore=9, spaceAfter=4, keepWithNext=True)
     s_body = ParagraphStyle("Body", parent=base["Normal"], fontName="Helvetica", fontSize=9.6, leading=14, alignment=TA_JUSTIFY, textColor=C_TEXT, spaceAfter=5)
-    s_bullet = ParagraphStyle("Bullet", parent=s_body, leftIndent=14, firstLineIndent=-8, spaceAfter=3)
-    s_cap = ParagraphStyle("Cap", parent=base["Normal"], fontName="Helvetica-Oblique", fontSize=8.6, leading=11.5, alignment=TA_CENTER, textColor=C_MUTED, spaceBefore=3, spaceAfter=8)
-    s_tbl_hdr = ParagraphStyle("TblHdr", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=8.4, leading=10.5, textColor=colors.white)
+    s_bullet = ParagraphStyle("Bullet", parent=s_body, leftIndent=14, firstLineIndent=-8, spaceAfter=3.5)
+    s_cap = ParagraphStyle("Cap", parent=base["Normal"], fontName="Helvetica-Oblique", fontSize=8.5, leading=11.5, alignment=TA_CENTER, textColor=C_MUTED, spaceBefore=3, spaceAfter=8)
+    s_tbl_hdr = ParagraphStyle("TblHdr", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=8.4, leading=10.5, textColor=C_INK)
     s_tbl_cell = ParagraphStyle("TblCell", parent=base["Normal"], fontName="Helvetica", fontSize=8.2, leading=10.8, textColor=C_TEXT)
     s_tbl_bold = ParagraphStyle("TblBold", parent=s_tbl_cell, fontName="Helvetica-Bold")
-    s_code = ParagraphStyle("Code", parent=base["Normal"], fontName="Courier", fontSize=8.0, leading=11, textColor=C_NAVY, backColor=C_ZEBRA, leftIndent=8, rightIndent=8)
 
     def p_cell(txt: str, bold: bool = False) -> Paragraph:
         safe = str(txt).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br/>")
@@ -139,12 +140,13 @@ def build_pdf(m: dict) -> None:
         tbl = Table(data, colWidths=col_widths, repeatRows=1)
         style_cmds = [
             ("BACKGROUND", (0, 0), (-1, 0), C_TBL_HDR),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("TEXTCOLOR", (0, 0), (-1, 0), C_INK),
+            ("LINEBELOW", (0, 0), (-1, 0), 1.0, C_TBL_HDR_LINE),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 6),
             ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ("GRID", (0, 0), (-1, -1), 0.5, C_BORDER),
         ]
         for idx in range(1, len(data)):
@@ -153,12 +155,13 @@ def build_pdf(m: dict) -> None:
         tbl.setStyle(TableStyle(style_cmds))
         return tbl
 
-    def callout(title: str, body: str, bg=C_CALLOUT_BG, accent=C_TEAL) -> Table:
-        content = Paragraph(f"<b><font color='{accent.hexval()}'>{title}:</font></b> {body}", s_body)
+    def callout(title: str, body: str) -> Table:
+        content = Paragraph(f"<b>{title}:</b> {body}", s_body)
         t = Table([[content]], colWidths=[avail_w])
         t.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), bg),
-            ("LINEBEFORE", (0, 0), (0, -1), 3.5, accent),
+            ("BACKGROUND", (0, 0), (-1, -1), C_CALLOUT_BG),
+            ("LINEBEFORE", (0, 0), (0, -1), 2.5, C_CALLOUT_BAR),
+            ("BOX", (0, 0), (-1, -1), 0.5, C_BORDER),
             ("LEFTPADDING", (0, 0), (-1, -1), 10),
             ("RIGHTPADDING", (0, 0), (-1, -1), 10),
             ("TOPPADDING", (0, 0), (-1, -1), 7),
@@ -182,27 +185,22 @@ def build_pdf(m: dict) -> None:
     story = []
 
     # --- COVER PAGE ---
-    banner = Table([[Paragraph(
-        "<font color='white'><b>JAIN (DEEMED-TO-BE) UNIVERSITY</b><br/>Department of Computer Science &amp; Engineering (AI)</font>",
-        ParagraphStyle("Ban", parent=base["Normal"], fontSize=13, leading=18, alignment=TA_CENTER, textColor=colors.white),
-    )]], colWidths=[avail_w])
-    banner.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), C_NAVY),
-        ("TOPPADDING", (0, 0), (-1, -1), 14),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 14),
-    ]))
-    story.append(banner)
-    story.append(Spacer(1, 18))
+    story.append(Spacer(1, 10))
+    story.append(Paragraph("JAIN (DEEMED-TO-BE) UNIVERSITY", s_uni))
+    story.append(Paragraph("Department of Computer Science &amp; Engineering (AI)", s_dept))
+    story.append(Spacer(1, 10))
+    story.append(HRFlowable(width="100%", thickness=1.2, color=C_SUBINK, spaceBefore=2, spaceAfter=14))
     story.append(Paragraph("OPERATING SYSTEMS — CASE STUDY 2 REPORT", s_tag))
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 10))
     story.append(Paragraph("REDLINE (HEMS-Link)", s_title))
-    story.append(Paragraph("Hospital Emergency Management &amp; Multi-Hospital Coordination System", ParagraphStyle("SubTitle", parent=s_title, fontSize=13.5, leading=18, textColor=C_TEAL)))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph("Hospital Emergency Management &amp; Multi-Hospital Coordination System", s_subtitle))
+    story.append(Spacer(1, 8))
     story.append(Paragraph(
-        "<i>An Operating Systems Analysis of CPU Scheduling, Real-Time Deadlines, Shared-Resource Synchronisation, Inter-Process Communication, and Deadlock Handling</i>",
+        "<i>An Operating Systems analysis of CPU scheduling, real-time deadlines, shared-resource synchronisation, inter-process communication, and deadlock handling</i>",
         s_sub,
     ))
-    story.append(Spacer(1, 16))
+    story.append(Spacer(1, 18))
     story.append(make_table(
         ["Academic Detail", "Information"],
         [
@@ -211,27 +209,26 @@ def build_pdf(m: dict) -> None:
             ["Faculty Name", "Gowri Shankar"],
             ["Group Members", GROUP_MEMBERS],
             ["Submission Date", "26/11/2026"],
-            ["System Scope", "Academic Prototype • Simulated Hospital Data • Decision Support Only"],
+            ["System Scope", "Academic Prototype | Simulated Hospital Data | Decision Support Only"],
         ],
         [avail_w * 0.32, avail_w * 0.68],
     ))
     story.append(Spacer(1, 16))
     story.append(callout(
-        "Clinical & Simulation Notice",
-        "All hospital bed capacities, patient hashes, and ambulance ETAs in this report are simulated for Operating Systems coursework evaluation. Redline supports dispatch staff and does not replace clinical judgement.",
-        bg=C_CALLOUT_WARN, accent=colors.HexColor("#B45309"),
+        "Simulation Notice",
+        "All hospital bed counts, patient reference IDs, and ambulance ETAs in this report are simulated for coursework evaluation. The system is intended for decision support and does not replace clinical judgement.",
     ))
     story.append(PageBreak())
 
     # --- PAGE 2: DECLARATION, ACKNOWLEDGEMENT, TOC ---
     story.append(Paragraph("DECLARATION", s_h1))
     story.append(Paragraph(
-        "We hereby declare that this case study report titled <b>Redline (HEMS-Link): Hospital Emergency Management &amp; Multi-Hospital Coordination System</b> has been prepared as part of the Operating Systems coursework (25PCCS201, III Semester, CSE-AI) at Jain (Deemed-to-be) University. All scheduling calculations, concurrency experiments, real-time analyses, and automated verification results were independently derived and validated on our prototype.",
+        "We declare that this case study report titled <b>Redline (HEMS-Link): Hospital Emergency Management &amp; Multi-Hospital Coordination System</b> was prepared by our group for the Operating Systems course (25PCCS201, III Semester, CSE-AI) at Jain (Deemed-to-be) University. All scheduling tables, concurrency trials, real-time deadline checks, and prototype tests were produced and verified on our implementation.",
         s_body,
     ))
     story.append(Paragraph("ACKNOWLEDGEMENT", s_h1))
     story.append(Paragraph(
-        "We express our sincere gratitude to Prof. <b>Gowri Shankar</b> and the Department of Computer Science &amp; Engineering (AI) for guiding us to analyse real-world hospital operations through core Operating Systems abstractions including CPU scheduling, real-time deadlines, synchronisation primitives, inter-process communication, and deadlock management.",
+        "We thank our course faculty, Prof. <b>Gowri Shankar</b>, and the Department of Computer Science &amp; Engineering (AI) for guiding us in applying Operating Systems concepts—process management, CPU scheduling, synchronisation, IPC, and deadlock handling—to a practical hospital coordination problem.",
         s_body,
     ))
     story.append(Spacer(1, 6))
@@ -239,7 +236,7 @@ def build_pdf(m: dict) -> None:
     toc_rows = [
         ["1", "Abstract", "3"],
         ["2", "Introduction & Problem Statement", "3"],
-        ["3", "Objectives, Scope & Explicit Assumptions", "3–4"],
+        ["3", "Objectives, Scope & Assumptions", "3–4"],
         ["4", "System Description (10-Hospital Kanakapura–Bengaluru Network)", "4"],
         ["5", "Real-World to OS Mapping, Architecture & Dispatch Flowchart", "5–6"],
         ["6", "OS Concepts, 5-State Lifecycle & Real-Time Classification", "7"],
@@ -258,58 +255,58 @@ def build_pdf(m: dict) -> None:
     b8 = m["bench8"]
     story.append(Paragraph("1. ABSTRACT", s_h1))
     story.append(Paragraph(
-        f"Hospital computing environments must simultaneously orchestrate time-critical emergency care (cardiac arrest, multi-organ trauma, stroke), continuous ICU ventilator telemetry, stat diagnostic lab panels, outpatient (OP) queues, pharmacy dispatches, and inter-hospital patient transfers. When an origin facility reaches capacity, manual phone coordination wastes golden minutes, exposes stale bed counts, and risks double-booking the last available ICU bed. <b>Redline (HEMS-Link)</b> models a ten-hospital emergency coordination network centred on Jain University Health Centre (Kanakapura Road, South Bengaluru) as a deterministic Operating System kernel.",
+        f"A hospital computer system has to handle urgent emergency admissions (cardiac arrest, road trauma, stroke) alongside ongoing ICU telemetry, stat lab panels, outpatient (OP) queues, pharmacy requests, and inter-hospital patient transfers. When a hospital runs out of ICU beds or specialist units, calling nearby hospitals by phone wastes time, relies on outdated counts, and can easily result in two callers claiming the same last bed. <b>Redline (HEMS-Link)</b> models a ten-hospital network centred on Jain University Health Centre (Kanakapura Road, South Bengaluru) using Operating Systems primitives.",
         s_body,
     ))
     story.append(Paragraph(
-        f"Every clinical activity and referral executes as a five-state Process Control Block (PCB); ICU beds and ventilators act as counting semaphores; concurrent reservations run inside a mutex-protected critical section with two-phase holds and optimistic version tokens; and hospital responses flow via asynchronous IPC queues. We evaluate eight scheduling policies—FCFS, SJF, SRTF, Non-Preemptive Priority, Preemptive Priority, Round Robin (Q=3), Real-Time EDF, and MLFQ—on the eight-process baseline (T1–T8) and a ten-process hospital clinical mix (H1–H10). While SJF achieves the lowest overall wait ({b8['sjf']['avg_waiting']} ticks), Preemptive Priority delivers <b>0.00-tick critical response</b> and is paired with priority aging (-1 every 10 ticks) to prevent starvation. In a 1,000-trial concurrency test, mutex protection reduces double-bookings from <b>{race['without_mutex_double_bookings']}/1,000</b> to <b>{race['with_mutex_double_bookings']}/1,000</b>.",
+        f"Each hospital task runs as a five-state Process Control Block (PCB). ICU beds and ventilators are tracked as counting semaphores, bed reservations execute inside a mutex critical section with two-phase holds and version checks, and hospital replies arrive asynchronously through IPC queues. We evaluate eight scheduling algorithms—FCFS, SJF, SRTF, Non-Preemptive Priority, Preemptive Priority, Round Robin (Q=3), EDF, and MLFQ—on the eight-process baseline (T1–T8) and a ten-process clinical mix (H1–H10). Although SJF gives the lowest overall average wait ({b8['sjf']['avg_waiting']} ticks), Preemptive Priority reaches <b>0.00-tick response time for critical emergencies</b> and is paired with aging (-1 every 10 ticks) so routine tasks do not starve. Across 1,000 concurrent threads, adding a mutex drops double-bookings from <b>{race['without_mutex_double_bookings']}/1,000</b> to <b>{race['with_mutex_double_bookings']}/1,000</b>.",
         s_body,
     ))
 
     story.append(Paragraph("2. INTRODUCTION & PROBLEM STATEMENT", s_h1))
     story.append(Paragraph(
-        "A modern hospital computer system is an archetypal concurrent, resource-constrained environment. Emergency admissions arrive unpredictably like hardware interrupts while routine outpatient registrations, laboratory batches, pharmacy refills, and planned step-down transfers compete for the same CPU scheduler and clinical staff attention. Extending coordination across multiple hospitals introduces distributed systems hazards: availability figures age quickly, two referring hospitals can view the same free ventilator at once, and a patient holding an ICU bed while waiting for a ventilator can trigger a circular wait.",
+        "Hospital software systems handle mixed workloads that do not share the same urgency. A cardiac arrest or trauma arrival cannot sit behind an outpatient registration or a routine pharmacy refill. At the same time, routine tasks cannot be ignored forever. Moving hospital availability onto a shared platform solves manual phone delays, yet it also exposes classic Operating Systems problems: emergency requests arrive unpredictably like interrupts, multiple coordinators update bed counts at the same time, and two hospitals can request the final free bed simultaneously.",
         s_body,
     ))
     story.append(callout(
         "Problem Statement",
-        "Design and analyse an Operating Systems-driven hospital emergency management and coordination architecture that efficiently schedules emergency patients, ICU monitoring, laboratory tests, OP queues, pharmacy requests, and inter-hospital transfers—ensuring hard real-time responsiveness for critical emergencies without starvation, race conditions, stale-data dispatch, or multi-resource deadlocks.",
+        "Build and analyse a hospital emergency management and coordination system using OS principles so that emergency patients, ICU monitoring, lab tests, OP queues, pharmacy requests, and inter-hospital transfers are scheduled efficiently, giving critical cases immediate CPU attention while preventing starvation, race conditions, stale-data dispatch, and multi-resource deadlocks.",
     ))
 
     # --- SECTION 3 & 4 ---
-    story.append(Paragraph("3. OBJECTIVES, SCOPE & EXPLICIT ASSUMPTIONS", s_h1))
+    story.append(Paragraph("3. OBJECTIVES, SCOPE & ASSUMPTIONS", s_h1))
     story.append(Paragraph("3.1 Case Study Objectives", s_h2))
     for item in [
-        "Model diverse hospital activities (Emergency, ICU Monitoring, Lab, OP, Pharmacy, Transfers) as OS processes with defined arrival times, priorities, burst times, and SLA deadlines.",
-        "Apply and compare FCFS, SJF, Preemptive Priority, and Round Robin (Q=3), alongside extended policies (SRTF, Non-Preemptive Priority, Real-Time EDF, MLFQ).",
-        "Compute Completion Time (CT), Turnaround Time (TAT), Waiting Time (WT), Response Time (RT), CPU Utilization, Throughput, and SLA Compliance.",
-        "Classify tasks into Hard Real-Time, Soft Real-Time, and Non-Real-Time categories and examine the impact of continuously arriving emergencies.",
-        "Prevent race conditions, starvation, priority inversion, and deadlocks using Mutex locks, Counting Semaphores, Two-Phase Holds, Aging, Resource Ordering, RAG detection, and Banker's Algorithm.",
+        "Model hospital activities (Emergency, ICU Monitoring, Lab, OP, Pharmacy, Transfers) as OS processes with arrival times, priorities, burst times, and SLA deadlines.",
+        "Apply and compare FCFS, SJF, Preemptive Priority, and Round Robin (Q=3), along with SRTF, Non-Preemptive Priority, Real-Time EDF, and MLFQ.",
+        "Calculate Completion Time (CT), Turnaround Time (TAT), Waiting Time (WT), Response Time (RT), CPU Utilisation, Throughput, and SLA Compliance.",
+        "Classify activities into Hard Real-Time, Soft Real-Time, and Non-Real-Time groups and study how continuous emergency arrivals affect lower-priority work.",
+        "Prevent race conditions, starvation, priority inversion, and deadlocks via Mutex locks, Counting Semaphores, Two-Phase Holds, Aging, Resource Ordering, RAG detection, and Banker's Algorithm.",
     ]:
         story.append(Paragraph(f"• {item}", s_bullet))
 
-    story.append(Paragraph("3.2 Explicit Engineering Assumptions & Scope", s_h2))
+    story.append(Paragraph("3.2 Engineering Assumptions & Scope", s_h2))
     for item in [
-        "<b>Normalised Time Quantum:</b> CPU burst times and arrivals are expressed in normalised scheduling ticks (1 tick = 1 unit of dispatch/processing work) for reproducible cross-algorithm math.",
-        "<b>Single-CPU Scheduler Core:</b> The core scheduling comparison evaluates single-processor preemption and context switching; multi-core SMP extension is documented in Section 12.",
-        "<b>Simulated Availability & Telemetry:</b> Hospital bed counts, trust scores, and coordinates represent realistic Kanakapura–Bengaluru locations with synthetic capacities.",
-        "<b>Decision-Support Boundary:</b> Automated matching and two-phase holds reserve capacity tentatively; final clinical admission always requires receiving hospital acceptance.",
+        "<b>Normalised Time Units:</b> Burst times and arrivals are measured in discrete simulation ticks so all eight algorithms can be compared on identical inputs.",
+        "<b>Single-Core Benchmark Model:</b> The scheduling comparison evaluates preemption and context switching on one CPU queue; multi-core SMP scaling is noted in Section 12.",
+        "<b>Simulated Data:</b> Coordinates correspond to real Kanakapura and South Bengaluru hospitals, while bed capacities and patient records are synthetic.",
+        "<b>Human Confirmation Boundary:</b> Automated matching and two-phase holds only reserve a bed tentatively; actual admission requires receiving hospital staff to accept.",
     ]:
         story.append(Paragraph(f"• {item}", s_bullet))
 
     story.append(Paragraph("4. SYSTEM DESCRIPTION (10-HOSPITAL NETWORK)", s_h1))
     story.append(Paragraph(
-        "Redline connects the origin node—<b>Jain University Health Centre (Kanakapura Rd)</b>—to <b>nine receiving hospitals</b> across South Bengaluru and Kanakapura. On the Live Dispatch console, staff submit patient or internal hospital tasks; the OS Engine admits a PCB, ranks eligible hospitals using Haversine ETA (50%), clinical trust (20%), data freshness (15%), and incoming load (15%), and executes a mutex-protected two-phase hold.",
+        "Redline links <b>Jain University Health Centre (Kanakapura Rd)</b> with <b>nine receiving hospitals</b> across South Bengaluru and Kanakapura. When staff log an activity or transfer request on the dispatch screen, the system creates a PCB, filters hospitals with free units, scores them using Haversine ETA (50%), trust score (20%), data freshness (15%), and incoming load (15%), and places a timed hold.",
         s_body,
     ))
     story.append(make_table(
         ["Aspect", "Traditional Manual Phone Process", "Redline OS-Based Coordination"],
         [
-            ["Hospital Discovery", "Staff call receiving desks sequentially, losing golden minutes.", "Two-stage matcher filters and ranks all 9 receiving hospitals simultaneously."],
-            ["Bed Availability", "Isolated spreadsheets/phone notes go stale within minutes.", "Shared counting semaphores with ISO-8601 timestamps & stale-node flags."],
-            ["Double-Booking Risk", "Two callers verbally promised the same final ICU bed.", "Mutex critical section + optimistic version tokens (HTTP 409 on conflict)."],
-            ["Task Prioritisation", "Ad-hoc queuing delays stroke/cardiac tasks behind routine traffic.", "Preemptive Priority + Aging + Real-Time EDF deadline tracking."],
-            ["Referral Visibility", "No live state tracking once a call is placed.", "5-state PCB tracker, parallel top-N holds (first-accept-wins) & escalation."],
+            ["Hospital Discovery", "Staff call receiving desks one by one, losing time.", "Matcher filters and ranks all 9 receiving hospitals together."],
+            ["Bed Availability", "Paper notes or local sheets go stale quickly.", "Shared counting semaphores carry ISO-8601 timestamps and stale flags."],
+            ["Double-Booking Risk", "Two callers can be promised the same last ICU bed.", "Mutex critical section and version tokens reject conflicts (HTTP 409)."],
+            ["Task Prioritisation", "Ad-hoc handling delays urgent cases behind routine queues.", "Preemptive Priority with Aging and EDF deadline tracking."],
+            ["Referral Visibility", "No live status tracking after a phone call.", "5-state PCB tracker, parallel top-N holds (first-accept-wins) and escalation."],
         ],
         [avail_w * 0.22, avail_w * 0.36, avail_w * 0.42],
     ))
@@ -320,45 +317,45 @@ def build_pdf(m: dict) -> None:
     story.append(make_table(
         ["Real-World Hospital Entity / Event", "Operating System Concept", "Role & Justification in Redline"],
         [
-            ["Cardiac arrest / trauma / stroke", "High-priority preemptive process (P1–P3)", "Immediately preempts running routine tasks for 0-tick first response."],
-            ["ICU telemetry & Stat ABG lab", "Periodic / urgent real-time process (P2–P3)", "Tracked against strict SLA deadlines under EDF and Priority scheduling."],
+            ["Cardiac arrest / trauma / stroke", "High-priority preemptive process (P1–P3)", "Preempts running routine work immediately for 0-tick response."],
+            ["ICU telemetry & Stat ABG lab", "Urgent / periodic real-time process (P2–P3)", "Tracked against strict SLA deadlines under EDF and Priority scheduling."],
             ["OP walk-in, pharmacy refill, dialysis", "Medium/low-priority process (P4–P8)", "Queued in READY; protected from starvation by aging (-1 / 10 ticks)."],
-            ["Emergency arrival during routine work", "Hardware interrupt / Preemption", "Triggers context switch, saving interrupted PCB back to READY."],
-            ["Central coordination server", "Kernel / CPU Scheduler", "Selects next READY PCB according to active policy (Priority, EDF, MLFQ, etc.)."],
-            ["Hospital matching engine", "Resource allocator", "Evaluates feasibility and scores candidate hospitals transparently."],
+            ["Emergency arrival during routine work", "Hardware interrupt / Preemption", "Triggers a context switch and returns the interrupted PCB to READY."],
+            ["Central coordination server", "Kernel / CPU Scheduler", "Selects the next READY PCB using the active scheduling policy."],
+            ["Hospital matching engine", "Resource allocator", "Checks feasibility and ranks eligible hospitals by score."],
             ["ICU beds, Ventilators, Specialists", "Counting Semaphores (S = free units)", "wait(S) decrements on PREPARE hold; signal(S) restores on reject/expiry."],
-            ["Simultaneous last-bed claims", "Critical section & Race condition", "Serialized via threading.Lock mutex + compare-and-swap version token."],
-            ["Referral hold & hospital reply", "Asynchronous IPC Message Queue", "Non-blocking PREPARE holds move PCB to WAITING until reply or timeout."],
-            ["Holding ICU bed while waiting for Vent", "Deadlock (Circular Wait)", "Prevented by global resource ordering; resolved by RAG victim release."],
+            ["Simultaneous last-bed claims", "Critical section & Race condition", "Serialized using threading.Lock mutex and version comparison."],
+            ["Referral hold & hospital reply", "Asynchronous IPC Message Queue", "PREPARE holds move the PCB to WAITING until reply or TTL expiry."],
+            ["Holding ICU bed while waiting for Vent", "Deadlock (Circular Wait)", "Avoided via global resource ordering; broken by RAG victim release."],
         ],
         [avail_w * 0.30, avail_w * 0.28, avail_w * 0.42],
     ))
-    story.append(add_figure("fig1_architecture.png", "Figure 1. Redline layered architecture connecting the 9-screen UI, Flask API, 8-policy OS Kernel, and 10-hospital data store.", max_h_in=3.1))
-    story.append(add_figure("fig2_dispatch_flowchart.png", "Figure 2. End-to-end hospital activity dispatch, duplicate check, CPU scheduling, mutex reservation, and recovery flowchart.", max_h_in=3.8))
+    story.append(add_figure("fig1_architecture.png", "Figure 1. Redline layered architecture connecting the web UI, Flask API, 8-policy OS kernel, and 10-hospital data store.", max_h_in=3.05))
+    story.append(add_figure("fig2_dispatch_flowchart.png", "Figure 2. End-to-end hospital activity dispatch, duplicate check, CPU scheduling, mutex reservation, and recovery flowchart.", max_h_in=3.75))
     story.append(PageBreak())
 
     # --- SECTION 6: OS CONCEPTS & REAL-TIME CLASSIFICATION ---
     story.append(Paragraph("6. OS CONCEPTS, 5-STATE LIFECYCLE & REAL-TIME CLASSIFICATION", s_h1))
     story.append(Paragraph(
-        "Every hospital task is instantiated as a <b>Process Control Block (PCB)</b> carrying its PID, subsystem category, arrival time, base and effective priority, remaining burst time, real-time SLA deadline, and waiting-tick counter. Tasks transition cleanly across five states so CPU dispatch never stalls while awaiting external hospital replies.",
+        "Each hospital activity is stored as a <b>Process Control Block (PCB)</b> containing its PID, subsystem category, arrival time, base and effective priority, remaining burst time, SLA deadline, and waiting ticks. Moving a waiting referral out of RUNNING into WAITING keeps the CPU free to serve other requests.",
         s_body,
     ))
-    story.append(add_figure("fig3_process_states.png", "Figure 3. Five-state PCB lifecycle showing preemption back to READY and non-blocking WAITING during parallel holds.", max_h_in=2.1))
+    story.append(add_figure("fig3_process_states.png", "Figure 3. Five-state PCB lifecycle showing preemption back to READY and non-blocking WAITING during parallel holds.", max_h_in=1.9))
 
     story.append(Paragraph("6.1 Real-Time Task Classification Across All Hospital Subsystems", s_h2))
     story.append(make_table(
         ["Real-Time Class", "Hospital Activities Covered", "Priority & SLA Target", "OS Scheduling Justification"],
         [
-            ["Hard Real-Time\n(Design Target)", "Cardiac Arrest (P1), Trauma ICU+Vent (P2), ICU Ventilator Telemetry (P2), Stroke Unit (P3), Stat ABG Lab (P3)", "P1–P3; Tight SLA slack (+3 to +7 ticks); 0-tick dispatch target", "Missed deadline or double-booked bed directly endangers patient survival; requires immediate preemption."],
-            ["Soft Real-Time", "Hospital Availability Sync (P4), ICU Epinephrine Stat Pharmacy (P4), Urgent Lab/Record Share (P5), OP Triage (P5)", "P4–P5; Moderate slack (+12 to +15 ticks)", "Timely execution keeps hospital telemetry fresh and pharmacy/triage responsive; brief delay is tolerable."],
-            ["Non-Real-Time", "Specialist Enquiry (P6), Planned Dialysis Transfer (P7), Pharmacy Ward Refill (P7), Discharge-Back (P8)", "P6–P8; High slack (+20 to +32 ticks)", "Background/routine workflows without hard deadlines; must avoid starvation via aging."],
+            ["Hard Real-Time\n(Design Target)", "Cardiac Arrest (P1), Trauma ICU+Vent (P2), ICU Ventilator Telemetry (P2), Stroke Unit (P3), Stat ABG Lab (P3)", "P1–P3; tight slack (+3 to +7 ticks); 0-tick dispatch target", "Missed deadlines or double-booked beds directly affect patient survival, so immediate preemption is required."],
+            ["Soft Real-Time", "Hospital Availability Sync (P4), ICU Epinephrine Stat Pharmacy (P4), Urgent Lab/Record Share (P5), OP Triage (P5)", "P4–P5; moderate slack (+12 to +15 ticks)", "Timely completion keeps bed telemetry accurate and pharmacy/triage responsive; small delays are acceptable."],
+            ["Non-Real-Time", "Specialist Enquiry (P6), Planned Dialysis Transfer (P7), Pharmacy Ward Refill (P7), Discharge-Back (P8)", "P6–P8; wide slack (+20 to +32 ticks)", "Routine work without strict deadlines; needs aging so emergencies do not block it forever."],
         ],
         [avail_w * 0.18, avail_w * 0.34, avail_w * 0.20, avail_w * 0.28],
     ))
 
     story.append(Paragraph("6.2 Ten-Process Full Hospital Clinical Mix (H1–H10)", s_h2))
     story.append(Paragraph(
-        "In addition to the 8-process baseline (T1–T8) and 8 live seeded system requests (REQ-1001–REQ-1008), Redline includes a 10-process clinical mix (H1–H10) covering all five Case Study 2 subsystems:",
+        "Alongside the 8-process baseline (T1–T8) and 8 live seeded requests (REQ-1001–REQ-1008), Redline includes a 10-process clinical mix (H1–H10) covering all five subsystems from the problem statement:",
         s_body,
     ))
     h10_rows = [
@@ -375,7 +372,7 @@ def build_pdf(m: dict) -> None:
     # --- SECTION 7: CPU SCHEDULING ANALYSIS ---
     story.append(Paragraph("7. CPU SCHEDULING ANALYSIS, CALCULATIONS & GANTT CHARTS", s_h1))
     story.append(Paragraph(
-        "To compare policies without bias, all algorithms are evaluated on the standard eight-process workload (T1–T8), where routine tasks arrive early (t=0..3) and critical emergencies arrive later (t=4..6). Scheduling formulae: <b>Turnaround Time (TAT) = Completion (CT) − Arrival (AT)</b>, <b>Waiting Time (WT) = TAT − Burst (BT)</b>, and <b>Response Time (RT) = First Dispatch − AT</b>.",
+        "Every algorithm is tested on the same eight-process workload (T1–T8), where routine activities arrive first (t=0..3) and critical emergencies arrive later (t=4..6). We compute <b>Turnaround Time (TAT) = Completion (CT) − Arrival (AT)</b>, <b>Waiting Time (WT) = TAT − Burst (BT)</b>, and <b>Response Time (RT) = First Dispatch − AT</b>.",
         s_body,
     ))
     t8_rows = [
@@ -387,7 +384,7 @@ def build_pdf(m: dict) -> None:
         t8_rows,
         [avail_w * 0.08, avail_w * 0.34, avail_w * 0.07, avail_w * 0.09, avail_w * 0.07, avail_w * 0.11, avail_w * 0.24],
     ))
-    story.append(add_figure("fig4_gantt_charts.png", "Figure 4. Color-coded Gantt charts across FCFS, SJF, SRTF, Preemptive Priority, Round Robin (Q=3), and Real-Time EDF (0–40 ticks).", max_h_in=3.6))
+    story.append(add_figure("fig4_gantt_charts.png", "Figure 4. Gantt charts across FCFS, SJF, SRTF, Preemptive Priority, Round Robin (Q=3), and Real-Time EDF (0–40 ticks).", max_h_in=3.55))
 
     def sched_table(title: str, key: str, obs: str):
         d = b8[key]
@@ -401,12 +398,12 @@ def build_pdf(m: dict) -> None:
             ),
         ]))
 
-    sched_table("7.1 First Come First Served (FCFS)", "fcfs", "Non-preemptive FIFO causes severe convoy delay: Cardiac Arrest (T8) arrives at t=6 but waits until t=33 (RT=27).")
-    sched_table("7.2 Shortest Job First (SJF — Non-Preemptive) & SRTF", "sjf", "SJF and SRTF achieve the lowest overall average wait (11.00 ticks) on this set, but still delay Cardiac Arrest (T8) until t=25 (RT=19) behind shorter routine tasks.")
+    sched_table("7.1 First Come First Served (FCFS)", "fcfs", "Non-preemptive FIFO causes a convoy effect: Cardiac Arrest (T8) arrives at t=6 but sits behind routine work until t=33 (RT=27).")
+    sched_table("7.2 Shortest Job First (SJF — Non-Preemptive) & SRTF", "sjf", "SJF and SRTF produce the lowest overall average wait (11.00 ticks) on this workload, yet Cardiac Arrest (T8) still waits until t=25 (RT=19) because shorter routine jobs run ahead of it.")
     story.append(PageBreak())
-    sched_table("7.3 Preemptive Priority Scheduling (Recommended Core Policy)", "preemptive_priority", "Every critical emergency (T6, T7, T8) is dispatched instantaneously upon arrival (Critical Avg Response = 0.00). Low-priority T2 waits 37 ticks without aging, demonstrating why aging is essential.")
-    sched_table("7.4 Round Robin Scheduling (Time Quantum Q = 3)", "round_robin", "Time-slicing improves average response (9.00) for early arrivals, but forces Cardiac Arrest (T8) to wait 18 ticks for its first CPU slice and finish last at t=40.")
-    sched_table("7.5 Earliest Deadline First (EDF — Real-Time Dynamic Priority)", "edf", "EDF dynamically prioritises tightest SLA deadlines, achieving Critical Avg Wait of 4.67 ticks with only 1 context switch.")
+    sched_table("7.3 Preemptive Priority Scheduling (Recommended Core Policy)", "preemptive_priority", "All three critical cases (T6, T7, T8) start the moment they arrive (Critical Avg Response = 0.00). T2 waits 37 ticks without aging, which shows why aging is necessary.")
+    sched_table("7.4 Round Robin Scheduling (Time Quantum Q = 3)", "round_robin", "Time-slicing gives early processes quick initial response (9.00 average), but delays Cardiac Arrest (T8) by 18 ticks before its first slice and pushes its completion to t=40.")
+    sched_table("7.5 Earliest Deadline First (EDF — Real-Time Dynamic Priority)", "edf", "EDF orders tasks by nearest deadline, keeping Critical Avg Wait low (4.67 ticks) with just 1 context switch.")
 
     story.append(Paragraph("7.6 Eight-Algorithm Criteria Comparison & Quantum Sensitivity", s_h2))
     comp_labels = [
@@ -430,13 +427,13 @@ def build_pdf(m: dict) -> None:
         comp_rows,
         [avail_w * 0.24, avail_w * 0.09, avail_w * 0.09, avail_w * 0.09, avail_w * 0.09, avail_w * 0.09, avail_w * 0.10, avail_w * 0.10, avail_w * 0.11],
     ))
-    story.append(add_figure("fig5_metrics_and_quantum.png", "Figure 5. (A) 8-algorithm metric comparison; (B) Round Robin Quantum sensitivity (Q=1..8) showing wait-time vs. context-switch trade-off.", max_h_in=3.1))
+    story.append(add_figure("fig5_metrics_and_quantum.png", "Figure 5. (A) Eight-algorithm metric comparison; (B) Round Robin Quantum sensitivity (Q=1..8) showing wait time vs. context switches.", max_h_in=3.05))
     story.append(PageBreak())
 
     # --- SECTION 8: IMPACT OF CONTINUOUS EMERGENCIES ---
     story.append(Paragraph("8. IMPACT OF CONTINUOUSLY ARRIVING EMERGENCIES (TASK 7)", s_h1))
     story.append(Paragraph(
-        "Under strict static Preemptive Priority, a sustained burst of Priority-1 emergencies creates two well-known real-time hazards: <b>indefinite starvation</b> of routine tasks (such as OP discharges or planned dialysis) and <b>priority inversion</b> when a low-priority task holds a shared availability lock.",
+        "If Priority-1 emergencies keep arriving back-to-back, plain Preemptive Priority introduces two problems: low-priority tasks such as OP discharges or planned dialysis can <b>starve indefinitely</b>, and a low-priority task holding a shared lock can cause <b>priority inversion</b> for an incoming critical request.",
         s_body,
     ))
     ag = m["aging"]
@@ -444,25 +441,25 @@ def build_pdf(m: dict) -> None:
     story.append(make_table(
         ["Phenomenon", "Experimental Setup", "Without Mitigation", "With Redline Mitigation"],
         [
-            ["Starvation under Continuous P1 Stream", "P1 arrives every 4 ticks for 120 ticks; P8 arrives at t=1 (BT=2).", f"P8 first dispatch: {ag['without_aging_first_dispatch'] or 'Starved (>120 ticks)'}", f"Aging (-1 every 10 ticks) boosts P8 -> P1; dispatched at t={ag['with_aging_first_dispatch']}."],
-            ["Priority Inversion on Availability Lock", "P8 holds lock; P1 needs lock at t=2; P4 medium task arrives.", f"P4 preempts P8; P1 delayed {pi['delay_without']} ticks (until t=14).", f"Priority Inheritance boosts P8 -> P1; P1 unblocked in {pi['delay_with']} ticks (t=4)."],
+            ["Starvation under Continuous P1 Stream", "P1 arrives every 4 ticks for 120 ticks; P8 arrives at t=1 (BT=2).", f"P8 first dispatch: {ag['without_aging_first_dispatch'] or 'Starved (>120 ticks)'}", f"Aging (-1 every 10 ticks) boosts P8 to P1; dispatched at t={ag['with_aging_first_dispatch']}."],
+            ["Priority Inversion on Availability Lock", "P8 holds lock; P1 needs lock at t=2; P4 medium task arrives.", f"P4 preempts P8; P1 waits {pi['delay_without']} ticks (until t=14).", f"Priority Inheritance raises P8 to P1; P1 runs after {pi['delay_with']} ticks (t=4)."],
         ],
         [avail_w * 0.22, avail_w * 0.26, avail_w * 0.25, avail_w * 0.27],
     ))
-    story.append(add_figure("fig7_starvation_aging_pi.png", "Figure 6. (A) Priority aging step curve rescuing P8 from starvation at t=72; (B) Priority Inheritance eliminating medium-priority interference.", max_h_in=3.1))
+    story.append(add_figure("fig7_starvation_aging_pi.png", "Figure 6. (A) Priority aging curve rescuing P8 from starvation at t=72; (B) Priority Inheritance preventing medium-task interference.", max_h_in=3.05))
 
     # --- SECTION 9: SYNCHRONIZATION & DEADLOCK ---
     story.append(Paragraph("9. SYNCHRONISATION, TWO-PHASE HOLDS & DEADLOCK HANDLING", s_h1))
     story.append(Paragraph(
-        "Each hospital facility acts as a <b>Counting Semaphore (S = free_units)</b>. Checking and decrementing S executes inside a <b>Mutex Critical Section</b> coupled with an optimistic version token. Rather than blocking the CPU while waiting for a hospital reply, Redline uses a <b>Two-Phase Hold</b> (PREPARE → COMMITTED / ABORTED / EXPIRED) and supports <b>Top-N Parallel Referral</b> where the first hospital to accept commits its hold and atomically releases all sibling holds.",
+        "Each hospital resource type is represented by a <b>Counting Semaphore (S = free_units)</b>. Checking and updating S takes place inside a <b>Mutex Critical Section</b> alongside an optimistic version number. Instead of holding the CPU idle while waiting for another hospital to answer, Redline places a <b>Two-Phase Hold</b> (PREPARE → COMMITTED / ABORTED / EXPIRED) and supports <b>Top-N Parallel Referral</b> where the first acceptance commits and releases all sibling holds.",
         s_body,
     ))
-    story.append(add_figure("fig6_synchronization_two_phase.png", "Figure 7. (A) Mutex-guarded semaphore acquisition & two-phase hold; (B) 1,000-trial race test proving 0 double-bookings with mutex.", max_h_in=3.0))
+    story.append(add_figure("fig6_synchronization_two_phase.png", "Figure 7. (A) Mutex-guarded semaphore acquisition & two-phase hold; (B) 1,000-trial concurrency test showing 0 double-bookings with mutex.", max_h_in=2.95))
     story.append(PageBreak())
 
     story.append(Paragraph("9.1 Deadlock Prevention, RAG Detection & Banker's Safe-State Check", s_h2))
     story.append(Paragraph(
-        "When a critical patient requires both an ICU Bed (R1) and a Ventilator (R2), unconstrained acquisition can satisfy all four Coffman conditions (Mutual Exclusion, Hold-and-Wait, No Preemption, Circular Wait). Redline layers three defences: (1) <b>Global Resource Ordering</b> (ICU → Emergency → Ventilator → Neuro → Specialist) breaking Circular Wait; (2) <b>Resource Allocation Graph (RAG)</b> cycle detection releasing the lowest-priority victim; and (3) <b>Banker's Algorithm</b> safe-state verification (demonstrated on Hospital B: Total=[3,2,1], Available=[1,1,0], where Req-B's [0,1,0] request is GRANTED safely while Req-C's [0,1,0] is DENIED as unsafe).",
+        "When a trauma patient needs both an ICU Bed (R1) and a Ventilator (R2), locking them in arbitrary order satisfies all four Coffman conditions (Mutual Exclusion, Hold-and-Wait, No Preemption, Circular Wait). Redline prevents and resolves deadlocks in three layers: (1) <b>Global Resource Ordering</b> (ICU → Emergency → Ventilator → Neuro → Specialist) to prevent cycles; (2) <b>Resource Allocation Graph (RAG)</b> cycle detection to preempt the lowest-priority victim; and (3) <b>Banker's Algorithm</b> safe-state checks (at Hospital B with Total=[3,2,1] and Available=[1,1,0], Req-B's [0,1,0] request is granted safely while Req-C's [0,1,0] is denied because it leads to an unsafe state).",
         s_body,
     ))
     story.append(make_table(
@@ -474,36 +471,36 @@ def build_pdf(m: dict) -> None:
         ],
         [avail_w * 0.20, avail_w * 0.19, avail_w * 0.14, avail_w * 0.15, avail_w * 0.32],
     ))
-    story.append(add_figure("fig8_deadlock_rag_banker.png", "Figure 8. (A) Bed–Ventilator RAG deadlock cycle & victim preemption (Req-Y); (B) Banker's Algorithm safe-state verification flow.", max_h_in=2.65))
+    story.append(add_figure("fig8_deadlock_rag_banker.png", "Figure 8. (A) Bed-ventilator RAG deadlock cycle & victim preemption (Req-Y); (B) Banker's Algorithm safe-state verification flow.", max_h_in=2.65))
 
     # --- SECTION 10: PROPOSED POLICY & EXPECTED OS BEHAVIOUR ---
     story.append(Paragraph("10. PROPOSED HYBRID POLICY & EXPECTED OS BEHAVIOUR", s_h1))
     story.append(Paragraph(
-        "<b>Proposed Scheduling Policy:</b> Redline adopts a hybrid <b>Preemptive Priority + Aging (-1 per 10 ticks)</b> kernel paired with <b>EDF Real-Time SLA Deadline Monitoring</b> during normal operations, and switches Priority-1 emergencies to <b>Surge FIFO + Capacity Load Balancing</b> (suspending P1 aging and skipping stale nodes) during mass-casualty surges.",
+        "<b>Proposed Policy:</b> Under normal traffic, Redline runs <b>Preemptive Priority with Aging (-1 every 10 ticks)</b> alongside <b>EDF SLA deadline monitoring</b>. During a mass-casualty surge, Priority-1 emergencies switch to <b>Surge FIFO with capacity-based load balancing</b> (suspending P1 aging and skipping stale hospitals).",
         s_body,
     ))
     story.append(make_table(
-        ["Expected OS Behaviour Question / Stress Case", "Verified Kernel Response in Redline"],
+        ["Expected OS Behaviour Question", "Verified Kernel Response in Redline"],
         [
-            ["1. Which process should execute?", "Highest-priority READY process (or earliest deadline under EDF) immediately preempts lower-priority running tasks."],
+            ["1. Which process should execute?", "The highest-priority READY process (or earliest deadline under EDF) immediately preempts lower-priority running tasks."],
             ["2. Which process should wait?", "Preempted routine tasks return to READY; referrals awaiting hospital confirmation enter WAITING without blocking the CPU."],
-            ["3. How are resources allocated?", "Matcher filters free semaphores, ranks by ETA/Trust/Freshness/Load, and locks resources in fixed global order."],
-            ["4. How is synchronisation maintained?", "Mutex guards wait(S)/signal(S) critical sections; optimistic version tokens reject stale edits with HTTP 409."],
-            ["5. How does it recover from failure?", "TTL expiry workers abort timed-out holds, restore S, and escalate; RAG cycle detector preempts lowest-priority victim."],
+            ["3. How are resources allocated?", "The matcher filters free semaphores, ranks by ETA, trust, freshness, and load, and acquires resources in fixed global order."],
+            ["4. How is synchronisation maintained?", "A mutex protects wait(S)/signal(S) critical sections, and version tokens reject stale edits with HTTP 409."],
+            ["5. How does it recover from failure?", "Expiry workers abort timed-out holds, call signal(S), and escalate; the RAG detector preempts the lowest-priority victim."],
         ],
-        [avail_w * 0.38, avail_w * 0.62],
+        [avail_w * 0.36, avail_w * 0.64],
     ))
     story.append(PageBreak())
 
     # --- SECTION 11: PROTOTYPE EVIDENCE & TESTS ---
     story.append(Paragraph("11. PROTOTYPE IMPLEMENTATION, 5 TEST CASES & PYTEST (19/19)", s_h1))
     story.append(Paragraph(
-        "The full-stack Flask + OS Engine prototype provides <b>9 operational screens + Style Guide</b> (Light/Dark Liquid Glass UI, EN/HI/KN i18n, RBAC switcher), including an interactive <b>Live Kernel Stepper</b>, <b>Custom Process Builder</b>, <b>SVG Gantt & Quantum Sensitivity Lab</b>, and <b>CSV Report Export</b>.",
+        "The Flask and OS Engine prototype includes <b>9 operational screens and a Style Guide</b> (Light/Dark themes, EN/HI/KN language switcher, RBAC role switcher), an interactive <b>Live Kernel Stepper</b>, a <b>Custom Process Builder</b>, <b>SVG Gantt and Quantum Sensitivity charts</b>, and <b>CSV Report Export</b>.",
         s_body,
     ))
     case_rows = [[c["case_id"], c["title"], c["best_algorithm"], c["metric_comparison"], c["why"]] for c in m["cases"]]
     story.append(make_table(
-        ["Case", "Hospital Scenario", "Best Algorithm", "Measured Result", "Engineering Rationale"],
+        ["Case", "Hospital Scenario", "Best Algorithm", "Measured Result", "Why It Wins"],
         case_rows,
         [avail_w * 0.09, avail_w * 0.23, avail_w * 0.18, avail_w * 0.23, avail_w * 0.27],
     ))
@@ -520,23 +517,23 @@ def build_pdf(m: dict) -> None:
         ],
         [avail_w * 0.16, avail_w * 0.66, avail_w * 0.18],
     ))
-    story.append(add_figure("fig9_network_and_surge.png", "Figure 9. (A) 10-hospital Kanakapura–Bengaluru simulated network; (B) Surge Mode distributing 20 Priority-1 requests via FIFO load balancing.", max_h_in=3.0))
+    story.append(add_figure("fig9_network_and_surge.png", "Figure 9. (A) 10-hospital Kanakapura-Bengaluru simulated network; (B) Surge Mode distributing 20 Priority-1 requests via FIFO load balancing.", max_h_in=2.95))
     story.append(PageBreak())
 
     # --- SECTION 12 & 13: RECOMMENDATIONS, CONCLUSION & REFERENCES ---
     story.append(Paragraph("12. RECOMMENDED ADDITIONAL FEATURES (FUTURE ROADMAP)", s_h1))
     for item in [
-        "<b>Multi-Core SMP Hospital CPU Scheduling:</b> Extend the single-CPU scheduler to N-core symmetric multiprocessing with dedicated core affinity for Emergency Triage, ICU Telemetry, and Lab Processing.",
-        "<b>Rate Monotonic Scheduling (RMS) for Periodic ICU Vitals:</b> Model continuous ECG/SpO2/ventilator polling as periodic tasks (Ci, Ti) with Liu–Layland utilisation bound checks.",
-        "<b>Persistent SQLite (WAL Mode) + Server-Sent Events (SSE):</b> Replace in-memory state with concurrent WAL-mode SQLite persistence and real-time SSE push updates across dispatch terminals.",
-        "<b>Road-Network Dijkstra/A* Ambulance Routing:</b> Upgrade Haversine ETA to graph-based shortest-path routing weighted by live Bengaluru traffic multipliers.",
-        "<b>Real-Time EDF Admission Control & HL7/FHIR Stubs:</b> Shed or defer non-critical OP tasks when CPU utilisation threatens hard real-time deadlines, and expose FHIR ServiceRequest payloads.",
+        "<b>Multi-Core SMP Hospital CPU Scheduling:</b> Extend the single-CPU scheduler to N-core symmetric multiprocessing with core affinity for Emergency Triage, ICU Telemetry, and Lab Processing.",
+        "<b>Rate Monotonic Scheduling (RMS) for Periodic ICU Vitals:</b> Model periodic ECG, SpO2, and ventilator polling tasks (Ci, Ti) using Liu-Layland utilisation bounds.",
+        "<b>Persistent SQLite (WAL Mode) + Server-Sent Events (SSE):</b> Replace in-memory state with WAL-mode SQLite persistence and live SSE push updates across open terminals.",
+        "<b>Road-Network Dijkstra/A* Ambulance Routing:</b> Replace Haversine ETA estimates with graph shortest-path routing weighted by Bengaluru traffic conditions.",
+        "<b>Real-Time EDF Admission Control & HL7/FHIR Stubs:</b> Defer non-critical OP tasks when CPU load threatens hard real-time deadlines, and add FHIR ServiceRequest payloads.",
     ]:
         story.append(Paragraph(f"• {item}", s_bullet))
 
     story.append(Paragraph("13. CONCLUSION", s_h1))
     story.append(Paragraph(
-        "Redline (HEMS-Link) demonstrates that hospital emergency management and multi-hospital coordination map directly to core Operating Systems abstractions. Evaluating eight scheduling policies confirms that overall average waiting time alone is clinically deceptive: SJF minimises aggregate wait (11.00 ticks) while delaying a cardiac arrest until t=25, whereas Preemptive Priority delivers 0.00-tick critical response and—when combined with Aging (-1 per 10 ticks), EDF SLA monitoring, mutex-protected two-phase holds, Banker's checks, and RAG recovery—guarantees responsiveness, fairness, and deadlock safety while leaving final clinical judgement with hospital staff.",
+        "Redline (HEMS-Link) shows how hospital emergency management and inter-hospital coordination map cleanly to Operating Systems mechanisms. Comparing eight scheduling algorithms shows why average waiting time alone can be misleading: SJF gives the lowest overall wait (11.00 ticks) while delaying a cardiac arrest until t=25, whereas Preemptive Priority achieves 0.00-tick critical response. Combining Preemptive Priority with Aging (-1 every 10 ticks), EDF deadline checks, mutex-guarded two-phase holds, Banker's safe-state verification, and RAG recovery keeps the system responsive, fair, and deadlock-free while leaving final clinical decisions with hospital staff.",
         s_body,
     ))
 
@@ -563,7 +560,7 @@ def build_pdf(m: dict) -> None:
             canvas.line(17 * mm, A4[1] - 13 * mm, A4[0] - 17 * mm, A4[1] - 13 * mm)
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(C_MUTED)
-        canvas.drawString(17 * mm, 10 * mm, "Academic Prototype • Simulated Hospital Data • Decision Support Only")
+        canvas.drawString(17 * mm, 10 * mm, "Academic Prototype | Simulated Hospital Data | Decision Support Only")
         canvas.drawRightString(A4[0] - 17 * mm, 10 * mm, f"Page {doc_obj.page}")
         canvas.restoreState()
 
@@ -583,12 +580,12 @@ def _set_table_borders(table) -> None:
     tblPr = table._tbl.tblPr
     borders = parse_xml(
         f'<w:tblBorders {nsdecls("w")}>'
-        '<w:top w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>'
-        '<w:left w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>'
-        '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>'
-        '<w:right w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>'
-        '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>'
-        '<w:insideV w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>'
+        '<w:top w:val="single" w:sz="4" w:space="0" w:color="D1D5DB"/>'
+        '<w:left w:val="single" w:sz="4" w:space="0" w:color="D1D5DB"/>'
+        '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="D1D5DB"/>'
+        '<w:right w:val="single" w:sz="4" w:space="0" w:color="D1D5DB"/>'
+        '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="D1D5DB"/>'
+        '<w:insideV w:val="single" w:sz="4" w:space="0" w:color="D1D5DB"/>'
         '</w:tblBorders>'
     )
     tblPr.append(borders)
@@ -617,7 +614,7 @@ def build_docx(m: dict) -> None:
         hdr.runs[0].font.size = Pt(8.5)
         hdr.runs[0].font.color.rgb = D_MUTED
         ftr = sec.footer.paragraphs[0]
-        ftr.text = "Academic Prototype • Simulated Hospital Data • Decision Support Only"
+        ftr.text = "Academic Prototype | Simulated Hospital Data | Decision Support Only"
         ftr.runs[0].font.size = Pt(8.5)
         ftr.runs[0].font.color.rgb = D_MUTED
 
@@ -633,8 +630,8 @@ def build_docx(m: dict) -> None:
         p.paragraph_format.keep_with_next = True
         r = p.add_run(text)
         r.bold = True
-        r.font.size = Pt(13.5)
-        r.font.color.rgb = D_NAVY
+        r.font.size = Pt(13)
+        r.font.color.rgb = D_INK
         return p
 
     def add_h2(text: str):
@@ -645,7 +642,7 @@ def build_docx(m: dict) -> None:
         r = p.add_run(text)
         r.bold = True
         r.font.size = Pt(11)
-        r.font.color.rgb = D_TEAL
+        r.font.color.rgb = D_SUBINK
         return p
 
     def add_body(text: str):
@@ -671,19 +668,19 @@ def build_docx(m: dict) -> None:
         for j, h in enumerate(headers):
             cell = hdr_row.cells[j]
             cell.width = Inches(col_widths_in[j])
-            _set_cell_shading(cell, "1B3B5A")
+            _set_cell_shading(cell, "E5E7EB")
             p = cell.paragraphs[0]
             p.paragraph_format.space_before = Pt(2)
             p.paragraph_format.space_after = Pt(2)
             r = p.add_run(h)
             r.bold = True
             r.font.size = Pt(9)
-            r.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+            r.font.color.rgb = D_INK
 
         for i, row_vals in enumerate(rows):
             row = tbl.rows[i + 1]
             _set_row_cant_split(row)
-            bg = "F4F8FB" if i % 2 == 1 else "FFFFFF"
+            bg = "F9FAFB" if i % 2 == 1 else "FFFFFF"
             for j, val in enumerate(row_vals):
                 cell = row.cells[j]
                 cell.width = Inches(col_widths_in[j])
@@ -715,22 +712,22 @@ def build_docx(m: dict) -> None:
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = p.add_run("JAIN (DEEMED-TO-BE) UNIVERSITY\nDepartment of Computer Science & Engineering (AI)")
     r.bold = True
-    r.font.size = Pt(15)
-    r.font.color.rgb = D_NAVY
+    r.font.size = Pt(14.5)
+    r.font.color.rgb = D_INK
 
     p2 = doc.add_paragraph()
     p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r2 = p2.add_run("OPERATING SYSTEMS — CASE STUDY 2 ASSIGNMENT\n\nREDLINE (HEMS-Link)")
+    r2 = p2.add_run("OPERATING SYSTEMS — CASE STUDY 2 REPORT\n\nREDLINE (HEMS-Link)")
     r2.bold = True
-    r2.font.size = Pt(20)
-    r2.font.color.rgb = D_NAVY
+    r2.font.size = Pt(19.5)
+    r2.font.color.rgb = D_INK
 
     p3 = doc.add_paragraph()
     p3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r3 = p3.add_run("Hospital Emergency Management & Multi-Hospital Coordination System\nAn Operating Systems Analysis of CPU Scheduling, Real-Time Deadlines, Shared-Resource Synchronisation, IPC, and Deadlock Handling\n(Academic Prototype • Simulated Hospital Data • Decision Support Only)")
+    r3 = p3.add_run("Hospital Emergency Management & Multi-Hospital Coordination System\nAn Operating Systems analysis of CPU scheduling, real-time deadlines, shared-resource synchronisation, IPC, and deadlock handling\n(Academic Prototype | Simulated Hospital Data | Decision Support Only)")
     r3.italic = True
-    r3.font.size = Pt(10.5)
-    r3.font.color.rgb = D_TEAL
+    r3.font.size = Pt(10.2)
+    r3.font.color.rgb = D_MUTED
 
     add_table(
         ["Academic Detail", "Information"],
@@ -746,8 +743,8 @@ def build_docx(m: dict) -> None:
     doc.add_page_break()
 
     add_h1("DECLARATION & ACKNOWLEDGEMENT")
-    add_body("We hereby declare that this case study report titled Redline (HEMS-Link): Hospital Emergency Management & Multi-Hospital Coordination System has been prepared as part of the Operating Systems coursework (25PCCS201, III Semester, CSE-AI) at Jain (Deemed-to-be) University. All scheduling calculations, concurrency experiments, and prototype observations are based on simulated hospital workloads.")
-    add_body("We express our sincere gratitude to Prof. Gowri Shankar for guiding us to analyse real-world hospital coordination challenges through core Operating Systems principles.")
+    add_body("We declare that this case study report titled Redline (HEMS-Link): Hospital Emergency Management & Multi-Hospital Coordination System was prepared by our group for the Operating Systems course (25PCCS201, III Semester, CSE-AI) at Jain (Deemed-to-be) University. All scheduling tables, concurrency trials, and prototype tests were produced and verified on our implementation.")
+    add_body("We thank our course faculty, Prof. Gowri Shankar, and the Department of Computer Science & Engineering (AI) for guiding us in applying Operating Systems concepts to a practical hospital coordination problem.")
 
     b8 = m["bench8"]
     race = m["race"]
@@ -756,58 +753,58 @@ def build_docx(m: dict) -> None:
 
     add_h1("1. ABSTRACT")
     add_body(
-        f"Hospital computer systems concurrently manage time-critical emergencies (cardiac arrest, road trauma, stroke), continuous ICU telemetry, stat laboratory tests, outpatient (OP) queues, pharmacy requests, and inter-hospital patient transfers. Redline (HEMS-Link) models a ten-hospital network centred on Jain University Health Centre (Kanakapura Road, South Bengaluru) as an Operating System kernel. Hospital activities execute as five-state PCBs; ICU beds and ventilators act as counting semaphores; reservations run inside a mutex-protected critical section with two-phase holds and optimistic version tokens; and hospital replies flow via asynchronous IPC queues. Evaluated across eight scheduling policies (FCFS, SJF, SRTF, Non-Preemptive Priority, Preemptive Priority, Round Robin Q=3, EDF, and MLFQ), SJF attains the lowest overall wait ({b8['sjf']['avg_waiting']} ticks), whereas Preemptive Priority achieves 0.00-tick critical response and is paired with aging (-1 every 10 ticks) to prevent starvation. Concurrency tests show {race['without_mutex_double_bookings']}/1,000 double-bookings without a mutex versus {race['with_mutex_double_bookings']}/1,000 with mutex protection."
+        f"A hospital computer system handles urgent emergency admissions (cardiac arrest, road trauma, stroke) alongside ongoing ICU telemetry, stat lab panels, outpatient (OP) queues, pharmacy requests, and inter-hospital patient transfers. When a hospital runs out of ICU beds, calling nearby hospitals by phone wastes time and risks two callers claiming the same last bed. Redline (HEMS-Link) models a ten-hospital network centred on Jain University Health Centre (Kanakapura Road, South Bengaluru) using Operating Systems primitives. Each task runs as a five-state PCB; ICU beds and ventilators act as counting semaphores; bed reservations execute inside a mutex critical section with two-phase holds and version tokens; and replies flow asynchronously through IPC queues. Evaluated across eight scheduling algorithms (FCFS, SJF, SRTF, Non-Preemptive Priority, Preemptive Priority, Round Robin Q=3, EDF, and MLFQ), SJF gives the lowest overall wait ({b8['sjf']['avg_waiting']} ticks), while Preemptive Priority achieves 0.00-tick critical response and is paired with aging (-1 every 10 ticks) to prevent starvation. Across 1,000 concurrent threads, mutex protection drops double-bookings from {race['without_mutex_double_bookings']}/1,000 to {race['with_mutex_double_bookings']}/1,000."
     )
 
     add_h1("2. INTRODUCTION & PROBLEM STATEMENT")
-    add_body("Hospital environments combine unpredictable emergency arrivals (analogous to hardware interrupts) with routine OP, pharmacy, laboratory, and planned transfer workloads. Centralising hospital coordination makes concurrency hazards explicit: bed records go stale, concurrent callers race for the last ICU bed, and multi-resource holds can deadlock.")
-    add_body("Problem Statement: Design and evaluate an OS-driven Hospital Emergency Management and Multi-Hospital Coordination System that schedules emergency patients, ICU monitoring, laboratory tests, OP patients, pharmacy requests, and inter-hospital transfers efficiently—guaranteeing critical responsiveness without starvation, race conditions, or deadlocks.")
+    add_body("Hospital software systems handle mixed workloads that do not share the same urgency. A cardiac arrest arrival cannot sit behind an outpatient registration or a routine pharmacy refill, while routine tasks cannot be ignored forever. Extending coordination across hospitals exposes classic OS problems: urgent requests arrive like interrupts, bed counts go stale, and two hospitals can request the final bed simultaneously.")
+    add_body("Problem Statement: Build and analyse a hospital emergency management and coordination system using OS principles so that emergency patients, ICU monitoring, lab tests, OP queues, pharmacy requests, and inter-hospital transfers are scheduled efficiently without starvation, race conditions, stale-data dispatch, or multi-resource deadlocks.")
 
-    add_h1("3. OBJECTIVES, SCOPE & EXPLICIT ASSUMPTIONS")
+    add_h1("3. OBJECTIVES, SCOPE & ASSUMPTIONS")
     for obj in [
         "Model hospital activities across Emergency, ICU Monitoring, Laboratory, OP, Pharmacy, and Transfers as OS processes.",
         "Apply and compare FCFS, SJF, SRTF, Non-Preemptive Priority, Preemptive Priority, Round Robin (Q=3), Real-Time EDF, and MLFQ.",
-        "Compute Waiting Time, Turnaround Time, Response Time, CPU Utilisation, Throughput, and SLA Compliance.",
-        "Classify tasks into Hard Real-Time, Soft Real-Time, and Non-Real-Time categories and analyse continuous emergency streams.",
+        "Calculate Waiting Time, Turnaround Time, Response Time, CPU Utilisation, Throughput, and SLA Compliance.",
+        "Classify activities into Hard Real-Time, Soft Real-Time, and Non-Real-Time groups and analyse continuous emergency streams.",
         "Prevent race conditions and deadlocks using Mutex locks, Counting Semaphores, Two-Phase Holds, Resource Ordering, RAG, and Banker's Algorithm.",
     ]:
         add_bullet(obj)
-    add_h2("Explicit Assumptions")
+    add_h2("Engineering Assumptions")
     for a in [
-        "CPU burst and arrival times use normalised simulation ticks for fair cross-algorithm comparison.",
-        "Single-core scheduling is benchmarked in the primary kernel; multi-core SMP extension is specified in Section 12.",
-        "All hospital locations are real Kanakapura–Bengaluru coordinates paired with simulated bed counts; final clinical acceptance stays with hospital staff.",
+        "Burst and arrival times use normalised simulation ticks so all algorithms compare on identical inputs.",
+        "Single-core scheduling is evaluated in the primary kernel; multi-core SMP extension is outlined in Section 12.",
+        "Hospital coordinates match real Kanakapura-Bengaluru locations with simulated bed counts; final admission stays with hospital staff.",
     ]:
         add_bullet(a)
 
     add_h1("4. SYSTEM DESCRIPTION (10-HOSPITAL NETWORK)")
-    add_body("Redline links Jain University Health Centre (HOSP-JAIN) with 9 receiving hospitals (DSH, RRM, BGS, APL, SGR, KNG, NAR, MNI, STJ) using explainable weighted matching (ETA 50%, Trust 20%, Freshness 15%, Load 15%) and live two-phase holds.")
+    add_body("Redline links Jain University Health Centre (HOSP-JAIN) with 9 receiving hospitals (DSH, RRM, BGS, APL, SGR, KNG, NAR, MNI, STJ) using weighted matching (ETA 50%, Trust 20%, Freshness 15%, Load 15%) and live two-phase holds.")
     add_table(
-        ["Aspect", "Manual Phone Process", "Redline OS-Based System"],
+        ["Aspect", "Traditional Manual Phone Process", "Redline OS-Based Coordination"],
         [
-            ["Hospital Discovery", "Sequential phone calls waste golden minutes.", "Filters and ranks all 9 receiving hospitals simultaneously."],
-            ["Bed Availability", "Isolated notes go stale rapidly.", "Shared counting semaphores with freshness timestamps."],
-            ["Bed Conflicts", "Two callers promised the same last bed.", "Mutex critical section + HTTP 409 version tokens."],
-            ["Status Tracking", "No shared lifecycle visibility.", "5-state PCB tracker + parallel holds + escalation."],
+            ["Hospital Discovery", "Sequential phone calls lose time.", "Filters and ranks all 9 receiving hospitals together."],
+            ["Bed Availability", "Local notes go stale quickly.", "Shared counting semaphores with freshness timestamps."],
+            ["Double-Booking Risk", "Two callers promised the same last bed.", "Mutex critical section + HTTP 409 version tokens."],
+            ["Referral Visibility", "No live status tracking after a call.", "5-state PCB tracker, parallel holds and escalation."],
         ],
         [1.5, 2.5, 2.9],
     )
 
     add_h1("5. REAL-WORLD TO OS MAPPING & ARCHITECTURE")
     add_table(
-        ["Real-World Component", "Operating System Concept", "Justification in Redline"],
+        ["Real-World Component", "Operating System Concept", "Role & Justification in Redline"],
         [
-            ["Cardiac arrest / trauma / stroke", "High-priority preemptive process (P1–P3)", "Immediately preempts running routine tasks."],
+            ["Cardiac arrest / trauma / stroke", "High-priority preemptive process (P1–P3)", "Preempts running routine tasks immediately."],
             ["OP / Lab / Pharmacy / Dialysis", "Medium/low-priority process (P4–P8)", "Queued in READY; protected from starvation by aging."],
-            ["Central coordination server", "Kernel / CPU Scheduler", "Dispatches processes by active policy."],
+            ["Central coordination server", "Kernel / CPU Scheduler", "Selects next READY PCB by active policy."],
             ["ICU beds / Ventilators", "Counting Semaphore (S = free units)", "wait(S) on hold; signal(S) on reject/timeout/release."],
             ["Concurrent last-bed claim", "Critical section / Race condition", "Mutex lock + optimistic version check."],
-            ["Referral hold & hospital reply", "IPC Message Queue", "Non-blocking PREPARE hold puts PCB in WAITING."],
-            ["Holds Bed, waits for Vent", "Deadlock (Circular Wait)", "Prevented by resource ordering; broken via RAG victim."],
+            ["Referral hold & hospital reply", "IPC Message Queue", "PREPARE hold puts PCB in WAITING until reply/timeout."],
+            ["Holds Bed, waits for Vent", "Deadlock (Circular Wait)", "Avoided via resource ordering; broken via RAG victim."],
         ],
         [2.0, 2.0, 2.9],
     )
-    add_fig("fig1_architecture.png", "Figure 1. Redline layered architecture connecting UI, Flask API, 8-policy OS Kernel, and 10-hospital data store.")
+    add_fig("fig1_architecture.png", "Figure 1. Redline layered architecture connecting UI, Flask API, 8-policy OS kernel, and 10-hospital data store.")
     add_fig("fig2_dispatch_flowchart.png", "Figure 2. End-to-end hospital activity dispatch, duplicate check, scheduling, mutex reservation, and recovery flowchart.")
 
     add_h1("6. OS CONCEPTS, 5-STATE LIFECYCLE & REAL-TIME CLASSIFICATION")
@@ -815,8 +812,8 @@ def build_docx(m: dict) -> None:
     add_table(
         ["Real-Time Class", "Hospital Platform Activities", "Reasoning"],
         [
-            ["Hard Real-Time (Target)", "Cardiac Arrest (P1), Trauma (P2), ICU Telemetry (P2), Stroke (P3), Stat ABG Lab (P3)", "Missed SLA or double-booking risks patient safety."],
-            ["Soft Real-Time", "Availability Sync (P4), ICU Epinephrine Stat (P4), Record Share (P5), OP Triage (P5)", "Prompt delivery expected; slight delay tolerable."],
+            ["Hard Real-Time (Target)", "Cardiac Arrest (P1), Trauma (P2), ICU Telemetry (P2), Stroke (P3), Stat ABG Lab (P3)", "Missed SLA or double-booking affects patient safety."],
+            ["Soft Real-Time", "Availability Sync (P4), ICU Epinephrine Stat (P4), Record Share (P5), OP Triage (P5)", "Prompt delivery expected; brief delay tolerable."],
             ["Non-Real-Time", "Specialist Enquiry (P6), Planned Dialysis (P7), Ward Refill (P7), Discharge-back (P8)", "Routine workflows protected by priority aging."],
         ],
         [1.5, 2.9, 2.5],
@@ -831,11 +828,11 @@ def build_docx(m: dict) -> None:
     add_h1("7. CPU SCHEDULING ANALYSIS, CALCULATIONS & GANTT CHARTS")
     t8_rows = [[p.pid, p.name, str(p.arrival_time), f"P{p.priority}", str(p.burst_time), f"t={p.deadline}"] for p in default_workload()]
     add_table(["PID", "Hospital Activity", "AT", "Priority", "BT", "SLA DL"], t8_rows, [0.6, 2.6, 0.6, 0.8, 0.6, 1.7])
-    add_fig("fig4_gantt_charts.png", "Figure 4. Color-coded Gantt charts across FCFS, SJF, SRTF, Preemptive Priority, Round Robin (Q=3), and EDF.")
+    add_fig("fig4_gantt_charts.png", "Figure 4. Gantt charts across FCFS, SJF, SRTF, Preemptive Priority, Round Robin (Q=3), and EDF.")
 
     for title, key in [
         ("7.1 First Come First Served (FCFS)", "fcfs"),
-        ("7.2 Shortest Job First (SJF — Non-Preemptive)", "sjf"),
+        ("7.2 Shortest Job First (SJF — Non-Preemptive) & SRTF", "sjf"),
         ("7.3 Preemptive Priority Scheduling (Recommended)", "preemptive_priority"),
         ("7.4 Round Robin Scheduling (Quantum = 3)", "round_robin"),
         ("7.5 Earliest Deadline First (EDF — Real-Time)", "edf"),
@@ -857,7 +854,7 @@ def build_docx(m: dict) -> None:
         for lbl, k in comp_labels
     ]
     add_table(["Algorithm", "Avg WT", "Avg TAT", "Avg RT", "Crit WT", "Crit RT", "Switches", "CPU %"], comp_rows, [1.6, 0.7, 0.75, 0.7, 0.75, 0.75, 0.85, 0.8])
-    add_fig("fig5_metrics_and_quantum.png", "Figure 5. 8-algorithm comparison bar chart and Round Robin Quantum sensitivity curve (Q=1..8).")
+    add_fig("fig5_metrics_and_quantum.png", "Figure 5. Eight-algorithm comparison bar chart and Round Robin Quantum sensitivity curve (Q=1..8).")
 
     add_h1("8. IMPACT OF CONTINUOUS EMERGENCIES: STARVATION & PRIORITY INHERITANCE")
     add_table(
@@ -871,7 +868,7 @@ def build_docx(m: dict) -> None:
     add_fig("fig7_starvation_aging_pi.png", "Figure 6. Priority aging curve rescuing P8 and Priority Inheritance resolving lock contention.")
 
     add_h1("9. SYNCHRONISATION, TWO-PHASE HOLDS & DEADLOCK HANDLING")
-    add_fig("fig6_synchronization_two_phase.png", "Figure 7. Mutex critical section, two-phase hold, and 1,000-trial race proof.")
+    add_fig("fig6_synchronization_two_phase.png", "Figure 7. Mutex critical section, two-phase hold, and 1,000-trial race test.")
     add_table(
         ["Hospital B Request", "Allocation", "Max Need", "Remaining Need", "Safe-State Decision"],
         [
@@ -884,7 +881,7 @@ def build_docx(m: dict) -> None:
     add_fig("fig8_deadlock_rag_banker.png", "Figure 8. Deadlock RAG cycle detection/recovery and Banker's Algorithm verification flow.")
 
     add_h1("10. PROPOSED HYBRID POLICY & EXPECTED OS BEHAVIOUR")
-    add_body("Redline uses Preemptive Priority + Aging (-1 per 10 ticks) paired with EDF SLA deadline monitoring in normal mode, and switches Priority-1 requests to Surge FIFO + Capacity Load Balancing during mass-casualty surges.")
+    add_body("Redline runs Preemptive Priority + Aging (-1 per 10 ticks) paired with EDF SLA deadline monitoring in normal mode, and switches Priority-1 requests to Surge FIFO + Capacity Load Balancing during mass-casualty surges.")
     add_table(
         ["Expected OS Behaviour", "Verified Action in Redline"],
         [
@@ -914,20 +911,20 @@ def build_docx(m: dict) -> None:
         ],
         [1.1, 4.2, 1.6],
     )
-    add_fig("fig9_network_and_surge.png", "Figure 9. 10-hospital Kanakapura–Bengaluru network and 20-request P1 Surge FIFO distribution.")
+    add_fig("fig9_network_and_surge.png", "Figure 9. 10-hospital Kanakapura-Bengaluru network and 20-request P1 Surge FIFO distribution.")
 
     add_h1("12. RECOMMENDED ADDITIONAL FEATURES")
     for item in [
         "Multi-Core SMP Hospital CPU Scheduling & Processor Affinity across Emergency, ICU Telemetry, and Lab cores.",
-        "Rate Monotonic Scheduling (RMS) for periodic ICU vitals monitoring with Liu–Layland utilisation checks.",
-        "Persistent SQLite (WAL mode) + Server-Sent Events (SSE) real-time push streaming.",
-        "Road-network Dijkstra/A* ambulance routing with live traffic weights.",
+        "Rate Monotonic Scheduling (RMS) for periodic ICU vitals monitoring with Liu-Layland utilisation bounds.",
+        "Persistent SQLite (WAL mode) + Server-Sent Events (SSE) real-time push updates.",
+        "Road-network Dijkstra/A* ambulance routing weighted by live traffic.",
         "Real-time EDF admission control & HL7/FHIR interoperability stubs.",
     ]:
         add_bullet(item)
 
     add_h1("13. CONCLUSION & REFERENCES")
-    add_body("Redline demonstrates that hospital emergency management and multi-hospital coordination map directly to OS abstractions. Preemptive Priority with Aging achieves 0.00-tick critical response without starvation, while mutex-protected semaphores, two-phase holds, resource ordering, RAG recovery, and Banker's Algorithm ensure safe resource allocation.")
+    add_body("Redline shows how hospital emergency management and multi-hospital coordination map directly to OS mechanisms. Preemptive Priority with Aging achieves 0.00-tick critical response without starvation, while mutex-protected semaphores, two-phase holds, resource ordering, RAG recovery, and Banker's Algorithm keep shared-resource allocation safe.")
     for ref in [
         "1. Silberschatz, A., Galvin, P. B., & Gagne, G. — Operating System Concepts, 10th ed., Wiley, 2018.",
         "2. Tanenbaum, A. S. — Modern Operating Systems, 4th ed., Pearson, 2015.",
