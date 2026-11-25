@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Design System & Style Guide</h1>
+    <p class="page-desc">Liquid Glass surfaces, architectural emerald grid, and tactile 3D keycap buttons.</p>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="glass glass-card">
+    <h2 style="margin-top:0; font-size:18px;">Tactile Keycap Buttons</h2>
+    <p style="font-size:13px; color:var(--text-secondary);">Press to test the tactile 3D depression state.</p>
+    <div style="display:flex; flex-wrap:wrap; gap:14px; margin-top:16px;">
+      <button type="button" class="keycap-btn keycap-white">i • Secondary</button>
+      <button type="button" class="keycap-btn keycap-blue">feel • Primary</button>
+      <button type="button" class="keycap-btn keycap-lime">:) • Confirm</button>
+      <button type="button" class="keycap-btn keycap-coral">! • Critical</button>
+    </div>
+  </div>
+
+  <div class="glass glass-card">
+    <h2 style="margin-top:0; font-size:18px;">Accessible Status Badges</h2>
+    <p style="font-size:13px; color:var(--text-secondary);">Always pair icon + text label with semantic color.</p>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:16px;">
+      <span class="badge badge-ok">● Fresh / Safe</span>
+      <span class="badge badge-info">◆ Waiting / Hold</span>
+      <span class="badge badge-warn">▲ Stale / Conflict</span>
+      <span class="badge badge-critical">■ Critical P1</span>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

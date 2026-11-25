@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Incoming Request & Coordination</h1>
+    <p class="page-desc">Two-phase hold review: Accept (commit), Reject (signal release), or Request Info.</p>
+  </div>
+</div>
+
+<div id="coord-list" class="grid-2"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function respondHold(holdId, action) {
+  const { ok, data } = await HEMS.api(`/api/transfers/${holdId}/respond`, {
+    method: "POST",
+    body: JSON.stringify({ action }),
+  });
+  if (!ok) {
+    alert(data.error || "Action failed");
+    return;
+  }
+  loadCoordination();
+}
+
+async function loadCoordination() {
+  const { data } = await HEMS.api("/api/transfers");
+  const holds = data.holds || [];
+  const el = document.getElementById("coord-list");
+  if (!holds.length) {
+    el.innerHTML = `<div class="glass glass-card">No active referral holds.</div>`;
+    return;
+  }
+  el.innerHTML = holds.map((h) => `
+    <article class="glass glass-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <strong style="font-family:var(--font-mono);">${h.hold_id} • ${h.to_hospital}</strong>
+        <span class="badge ${h.phase === 'COMMITTED' ? 'badge-ok' : h.phase === 'PREPARE' ? 'badge-info' : 'badge-warn'}">${h.phase}</span>
+      </div>
+      <p style="font-size:13px; color:var(--text-secondary); margin:0 0 14px;">
+        Request: <strong>${h.request_id}</strong> • Resources: ${h.facilities.join(", ")}
+      </p>
+      <div style="font-size:13px; margin-bottom:16px;">
+        <label style="display:block; margin-bottom:4px;"><input type="checkbox" checked> Bed & oxygen readiness checked</label>
+        <label style="display:block;"><input type="checkbox" checked> Receiving team notified</label>
+      </div>
+      ${h.phase === "PREPARE" ? `
+      <div style="display:flex; flex-wrap:wrap; gap:10px;">
+        <button type="button" class="keycap-btn keycap-lime keycap-sm" onclick="respondHold('${h.hold_id}', 'ACCEPT')">Accept</button>
+        <button type="button" class="keycap-btn keycap-coral keycap-sm" onclick="respondHold('${h.hold_id}', 'REJECT')">Reject</button>
+        <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="respondHold('${h.hold_id}', 'MORE_INFO')">More Info</button>
+      </div>` : `<div style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted);">Outcome: ${h.response || h.phase}</div>`}
+    </article>
+  `).join("");
+}
+
+loadCoordination();
+</script>
+{% endblock %}
+

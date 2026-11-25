@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Matching Results</h1>
+    <p class="page-desc">Two-stage filtering and explainable scoring (ETA, Trust, Freshness, Load).</p>
+  </div>
+  <div style="display:flex; gap:12px;">
+    <button id="parallel-refer-btn" type="button" class="keycap-btn keycap-lime">Send Parallel Referral (Top 3)</button>
+  </div>
+</div>
+
+<div id="match-msg" style="margin-bottom:16px; font-size:14px; color:var(--status-ok);"></div>
+<div id="match-list" class="grid-2"></div>
+
+<div id="why-drawer" class="drawer-backdrop" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+  <div class="glass drawer-panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h2 id="drawer-title" style="margin:0; font-size:20px;">Why this hospital?</h2>
+      <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="closeDrawer()">Close</button>
+    </div>
+    <div id="drawer-body" style="font-size:14px;"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let currentMatches = [];
+  let activeReq = JSON.parse(localStorage.getItem("hems_last_req") || "null");
+
+  function openDrawer(idx) {
+    const m = currentMatches[idx];
+    const f = m.explanation.factors;
+    document.getElementById("drawer-body").innerHTML = `
+    <p><strong>${m.name}</strong> (${m.hospital_id})</p>
+    <p style="font-family:var(--font-mono); font-size:13px;">Composite Score: <strong>${m.score}</strong> (lower is better)</p>
+    <table class="glass-table">
+      <thead><tr><th>Factor</th><th>Value</th><th>Weight</th></tr></thead>
+      <tbody>
+        <tr><td>Travel ETA</td><td>${f.eta_min} min</td><td>50%</td></tr>
+        <tr><td>Trust Score</td><td>${Math.round(f.trust * 100)}%</td><td>20%</td></tr>
+        <tr><td>Freshness</td><td>${f.staleness_min} min ago</td><td>15%</td></tr>
+        <tr><td>Incoming Load</td><td>${f.incoming_load}</td><td>15%</td></tr>
+      </tbody>
+    </table>
+  `;
+    document.getElementById("why-drawer").classList.add("open");
+  }
+
+  function closeDrawer() {
+    document.getElementById("why-drawer").classList.remove("open");
+  }
+
+  (async function loadMatches() {
+    if (!activeReq) {
+      const { data: rData } = await HEMS.api("/api/requests");
+      activeReq = (rData.requests && rData.requests[0]) || { request_id: "REQ-1001", from_hospital: "HOSP-A", facilities_needed: ["ICU", "VENTILATOR"] };
+    }
+
+    const { data } = await HEMS.api("/api/matches", {
+      method: "POST",
+      body: JSON.stringify({
+        from_hospital: activeReq.from_hospital,
+        facilities_needed: activeReq.facilities_needed,
+      }),
+    });
+    currentMatches = data.eligible || [];
+
+    document.getElementById("match-list").innerHTML = currentMatches.map((m, i) => `
+    <article class="glass glass-card">
+      <div style="display:flex; justify-content:space-between; align-items:start; gap:10px;">
+        <div>
+          <span style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted);">#${i + 1} • ${m.hospital_id}</span>
+          <h3 style="margin:4px 0;">${m.name}</h3>
+        </div>
+        <span class="badge ${m.is_stale ? 'badge-warn' : 'badge-ok'}">${m.is_stale ? '▲ Stale ' + Math.round(m.staleness_min) + 'm' : '● Fresh'}</span>
+      </div>
+      <p style="font-size:13px; color:var(--text-secondary); margin:6px 0 16px;">
+        ETA ${m.eta_min} min • Distance ${m.distance_km} km • Score ${m.score}
+      </p>
+      <div style="display:flex; gap:10px;">
+        <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="openDrawer(${i})">Why this hospital?</button>
+      </div>
+    </article>
+  `).join("");
+  })();
+
+  document.getElementById("parallel-refer-btn").addEventListener("click", async () => {
+    const topIds = currentMatches.slice(0, 3).map((m) => m.hospital_id);
+    const { ok, data } = await HEMS.api("/api/refer", {
+      method: "POST",
+      body: JSON.stringify({ request_id: activeReq.request_id, hospital_ids: topIds, batch_size: 3 }),
+    });
+    if (ok) {
+      document.getElementById("match-msg").textContent = `Placed ${data.holds.length} parallel two-phase holds for ${activeReq.request_id}.`;
+    }
+  });
+</script>
+{% endblock %}

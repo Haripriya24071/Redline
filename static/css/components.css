@@ -1,0 +1,375 @@
+/* HEMS-Link Liquid Glass & Tactile Keycap Components */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background-color: var(--bg-base);
+  background-image: url("/static/img/bg-meadow.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 12px;
+  z-index: 1000;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #a3e635;
+  color: #092c20;
+  font-weight: 700;
+}
+.skip-link:focus {
+  left: 16px;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Liquid Glass Container */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-glass);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);
+}
+
+.glass-card {
+  padding: 24px;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.glass-card:hover {
+  background: var(--glass-bg-elevated);
+}
+
+/* App Shell */
+.app-shell {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 24px 24px 56px;
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  margin-bottom: 24px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--text-primary);
+}
+
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #a3e635, #22c55e);
+  color: #08291d;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 16px;
+  box-shadow: 0 3px 0 #3f6212, inset 0 1px 1px rgba(255, 255, 255, 0.7);
+}
+
+.brand-title {
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+
+.brand-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: block;
+}
+
+.nav-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nav-pill {
+  padding: 7px 13px;
+  border-radius: 11px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.nav-pill:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.nav-pill.active {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: var(--glass-border);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+
+.topbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Tactile Keycap Buttons (Inspired by Image 1) */
+.keycap-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  min-height: 42px;
+  border-radius: var(--radius-keycap);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
+}
+
+.keycap-btn:hover {
+  filter: brightness(1.06);
+}
+
+.keycap-btn:active {
+  transform: translateY(3px);
+}
+
+.keycap-white {
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+  color: #0f172a;
+  box-shadow: 0 5px 0 #94a3b8, 0 10px 18px rgba(0, 0, 0, 0.25), inset 0 2px 2px #ffffff;
+}
+.keycap-white:active {
+  box-shadow: 0 2px 0 #94a3b8, 0 4px 8px rgba(0, 0, 0, 0.2), inset 0 2px 2px #ffffff;
+}
+
+.keycap-blue {
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border-color: rgba(147, 197, 253, 0.6);
+  box-shadow: 0 5px 0 #1e3a8a, 0 10px 20px rgba(29, 78, 216, 0.38), inset 0 2px 3px rgba(191, 219, 254, 0.55);
+}
+.keycap-blue:active {
+  box-shadow: 0 2px 0 #1e3a8a, 0 4px 10px rgba(29, 78, 216, 0.3), inset 0 2px 3px rgba(191, 219, 254, 0.55);
+}
+
+.keycap-lime {
+  background: linear-gradient(180deg, #bef264 0%, #84cc16 100%);
+  color: #0a2e1f;
+  border-color: rgba(236, 252, 203, 0.75);
+  box-shadow: 0 5px 0 #4d7c0f, 0 10px 20px rgba(132, 204, 22, 0.30), inset 0 2px 2px rgba(255, 255, 255, 0.7);
+}
+.keycap-lime:active {
+  box-shadow: 0 2px 0 #4d7c0f, 0 4px 10px rgba(132, 204, 22, 0.25), inset 0 2px 2px rgba(255, 255, 255, 0.7);
+}
+
+.keycap-coral {
+  background: linear-gradient(180deg, #f43f5e 0%, #e11d48 100%);
+  color: #ffffff;
+  border-color: rgba(253, 164, 175, 0.55);
+  box-shadow: 0 5px 0 #9f1239, 0 10px 20px rgba(225, 29, 72, 0.32), inset 0 2px 2px rgba(255, 255, 255, 0.45);
+}
+.keycap-coral:active {
+  box-shadow: 0 2px 0 #9f1239, 0 4px 8px rgba(225, 29, 72, 0.25), inset 0 2px 2px rgba(255, 255, 255, 0.45);
+}
+
+.keycap-sm {
+  padding: 6px 12px;
+  min-height: 34px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+
+/* Spacious, Uncluttered Grids */
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.page-desc {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+@media (max-width: 960px) {
+  .grid-4, .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+}
+
+.kpi-value {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 700;
+  margin: 6px 0 2px;
+}
+
+.kpi-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Badges (Text + Icon, never color alone) */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid currentColor;
+}
+.badge-critical { color: var(--status-critical); background: var(--status-critical-bg); }
+.badge-warn { color: var(--status-warn); background: var(--status-warn-bg); }
+.badge-ok { color: var(--status-ok); background: var(--status-ok-bg); }
+.badge-info { color: var(--status-info); background: var(--status-info-bg); }
+
+/* Inputs & Selects */
+.glass-input, .glass-select {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.10);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+.glass-select option {
+  background: #0d3b2b;
+  color: #f3faf6;
+}
+
+.compact-select {
+  width: auto;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+
+/* Clean Tables */
+.glass-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.glass-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.glass-table td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Drawer */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 20, 14, 0.55);
+  backdrop-filter: blur(6px);
+  display: none;
+  justify-content: flex-end;
+  z-index: 200;
+}
+.drawer-backdrop.open {
+  display: flex;
+}
+.drawer-panel {
+  width: min(440px, 100vw);
+  height: 100%;
+  padding: 28px;
+  overflow-y: auto;
+  border-radius: 22px 0 0 22px;
+}
+
+.sim-banner {
+  margin-top: 28px;
+  padding: 12px 18px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+}
+

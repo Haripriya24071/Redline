@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title" data-i18n="p3_title">3. Hospital Bed Board (Counting Semaphores)</h1>
+    <p class="page-desc" data-i18n="p3_desc">Adjust free ICU/Ventilator units directly. Each update increments the optimistic concurrency version token.</p>
+  </div>
+</div>
+
+<div id="conflict-banner" class="glass glass-card"
+  style="display:none; margin-bottom:20px; border-color:var(--status-critical);">
+  <strong style="color:var(--status-critical);">▲ Optimistic Concurrency Conflict:</strong>
+  <span id="conflict-text"></span>
+  <button type="button" class="keycap-btn keycap-white keycap-sm" style="margin-left:12px;"
+    onclick="loadBedBoard()">Refresh</button>
+</div>
+
+<div id="bed-board" class="grid-2"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function adjustUnits(hid, fac, nextUnits, version) {
+    const { ok, status, data } = await HEMS.api(`/api/facilities/${hid}/${fac}`, {
+      method: "PATCH",
+      body: JSON.stringify({ free_units: nextUnits, version }),
+    });
+    if (status === 409) {
+      document.getElementById("conflict-banner").style.display = "block";
+      document.getElementById("conflict-text").textContent = data.error;
+      return;
+    }
+    if (!ok) {
+      alert(data.error || "Update blocked");
+      return;
+    }
+    document.getElementById("conflict-banner").style.display = "none";
+    loadBedBoard();
+  }
+
+  async function loadBedBoard() {
+    const { data } = await HEMS.api("/api/hospitals");
+    const hospitals = data.hospitals || [];
+    document.getElementById("bed-board").innerHTML = hospitals.map((h) => {
+      const rows = Object.values(h.facilities || {}).map((f) => `
+      <tr>
+        <td style="font-family:var(--font-mono);">${f.facility}</td>
+        <td><strong>${f.free_units}</strong> / ${f.total_units}</td>
+        <td style="font-family:var(--font-mono); font-size:12px;">v${f.version}</td>
+        <td style="display:flex; gap:6px;">
+          <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="adjustUnits('${h.hospital_id}', '${f.facility}', ${f.free_units - 1}, ${f.version})">−1</button>
+          <button type="button" class="keycap-btn keycap-lime keycap-sm" onclick="adjustUnits('${h.hospital_id}', '${f.facility}', ${f.free_units + 1}, ${f.version})">+1</button>
+        </td>
+      </tr>
+    `).join("");
+
+      return `
+      <article class="glass glass-card">
+        <h3 style="margin-top:0;">${h.name} <span style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted);">(${h.hospital_id})</span></h3>
+        <table class="glass-table">
+          <thead><tr><th>Resource</th><th>Semaphore</th><th>Version</th><th>Update</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </article>
+    `;
+    }).join("");
+  }
+
+  loadBedBoard();
+</script>
+{% endblock %}

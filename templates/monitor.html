@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title" data-i18n="p2_title">2. OS Kernel &amp; Step-by-Step Math</h1>
+    <p class="page-desc" data-i18n="p2_desc">See how every patient from Screen 1 is handled by OS Processes, CPU Scheduling, Semaphores, Mutex, and Deadlock Avoidance.</p>
+  </div>
+  <a class="keycap-btn keycap-white" href="{{ url_for('screen_dashboard') }}" data-i18n="p2_back">← Back to Dispatch</a>
+</div>
+
+<!-- 1. All Live Processes (PCBs) -->
+<section class="glass glass-card" style="margin-bottom:22px;">
+  <h2 style="margin-top:0; font-size:18px;" data-i18n="p2_sec1">Topic A • Process Management (5-State Model: NEW → READY → RUNNING → WAITING → TERMINATED)</h2>
+  <table class="glass-table">
+    <thead>
+      <tr><th>PID</th><th>Patient / Process</th><th>Arrival (AT)</th><th>Priority</th><th>Burst (BT)</th><th>Current State</th></tr>
+    </thead>
+    <tbody id="pcb-body"></tbody>
+  </table>
+</section>
+
+<!-- 2. Live 4-Algorithm Calculations + Gantt Charts -->
+<section class="glass glass-card" style="margin-bottom:22px;">
+  <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px;">
+    <div>
+      <h2 style="margin:0; font-size:18px;" data-i18n="p2_sec2">Topic B • CPU Scheduling &amp; Calculations (FCFS vs SJF vs Preemptive Priority vs Round Robin)</h2>
+      <p style="margin:4px 0 0; font-size:12px; color:var(--text-secondary); font-family:var(--font-mono);">
+        Formulas: Turnaround (TAT) = Completion − Arrival &nbsp;|&nbsp; Waiting (WT) = TAT − Burst &nbsp;|&nbsp; Response (RT) = First Dispatch − Arrival
+      </p>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px;">
+      <button type="button" class="keycap-btn keycap-blue keycap-sm" onclick="showAlgo('preemptive_priority')">Preemptive Priority</button>
+      <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="showAlgo('fcfs')">FCFS</button>
+      <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="showAlgo('sjf')">SJF</button>
+      <button type="button" class="keycap-btn keycap-white keycap-sm" onclick="showAlgo('round_robin')">Round Robin (Q=3)</button>
+      <button type="button" class="keycap-btn keycap-lime keycap-sm" onclick="showAlgo('all')">Show All 4</button>
+    </div>
+  </div>
+  <div id="algo-container" style="display:flex; flex-direction:column; gap:20px; margin-bottom:18px;"></div>
+
+  <div style="padding:14px; border-radius:14px; background:rgba(255,255,255,0.22); border:1px solid var(--glass-border);">
+    <strong style="display:block; margin-bottom:8px; font-size:14px;">Algorithm Comparison Summary (Live Workload)</strong>
+    <table class="glass-table" style="font-size:13px;">
+      <thead>
+        <tr><th>Algorithm</th><th>Avg Wait</th><th>Avg Turnaround</th><th>Avg Response</th><th>Critical Response (P1–P3)</th><th>Context Switches</th></tr>
+      </thead>
+      <tbody id="algo-summary-body"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 3. Semaphores, Mutex & IPC Holds -->
+<section class="grid-2" style="margin-bottom:22px;">
+  <div class="glass glass-card">
+    <h2 style="margin-top:0; font-size:18px;" data-i18n="p2_sec3">Topic C • Counting Semaphores (S = Free Beds)</h2>
+    <table class="glass-table">
+      <thead><tr><th>Hospital</th><th>ICU (S)</th><th>Vent (S)</th><th>Emerg (S)</th></tr></thead>
+      <tbody id="sem-body"></tbody>
+    </table>
+  </div>
+
+  <div class="glass glass-card">
+    <h2 style="margin-top:0; font-size:18px;" data-i18n="p2_sec4">Topic D • Mutex Critical Section &amp; IPC Log</h2>
+    <div id="mon-events" style="font-family:var(--font-mono); font-size:12px; display:flex; flex-direction:column; gap:6px;"></div>
+  </div>
+</section>
+
+<!-- 4. Banker's Algorithm & Live Experimental Proof -->
+<section class="grid-2">
+  <div class="glass glass-card">
+    <h2 style="margin-top:0; font-size:18px;" data-i18n="p2_sec5">Topic E • Deadlock Avoidance (Banker's Algorithm)</h2>
+    <div id="mon-banker" style="font-size:13px;"></div>
+  </div>
+
+  <div class="glass glass-card">
+    <h2 style="margin-top:0; font-size:18px;" data-i18n="p2_sec6">Topic F • Experimental Proof (Race Condition &amp; Deadlock)</h2>
+    <div id="auto-proofs" style="font-size:13px; display:flex; flex-direction:column; gap:10px;">Running live checks...</div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let monitorData = null;
+let selectedAlgo = "preemptive_priority";
+
+const ALGO_TITLES = {
+  preemptive_priority: "Preemptive Priority Scheduling (Recommended • With Aging)",
+  fcfs: "First Come First Served (FCFS)",
+  sjf: "Shortest Job First (SJF — Non-Preemptive)",
+  round_robin: "Round Robin (Time Quantum Q = 3)",
+};
+
+const PALETTE = ["#2563eb", "#65a30d", "#e11d48", "#d97706", "#0891b2", "#7c3aed", "#059669", "#db2777"];
+
+function renderAlgoBlock(key, algo) {
+  if (!algo) return "";
+  const totalEnd = (algo.gantt && algo.gantt.length) ? algo.gantt[algo.gantt.length - 1].end : 1;
+  const pidColors = {};
+  (algo.rows || []).forEach((r, idx) => { pidColors[r.pid] = PALETTE[idx % PALETTE.length]; });
+
+  const ganttHtml = (algo.gantt || []).map((seg) => {
+    const widthPct = Math.max(4, ((seg.end - seg.start) / totalEnd) * 100);
+    return `
+      <div title="${seg.pid}: ${seg.start}–${seg.end}" style="width:${widthPct}%; min-width:38px; padding:7px 4px; text-align:center; background:${pidColors[seg.pid] || '#2563eb'}; color:#fff; font-family:var(--font-mono); font-size:11px; font-weight:700; border-right:1px solid rgba(255,255,255,0.4);">
+        ${seg.pid}<br><span style="font-weight:400; font-size:10px;">${seg.start}-${seg.end}</span>
+      </div>
+    `;
+  }).join("");
+
+  const rowsHtml = (algo.rows || []).map((r) => `
+    <tr>
+      <td style="font-family:var(--font-mono); font-weight:700;">${r.pid}</td>
+      <td>${r.arrival}</td>
+      <td>P${r.priority}</td>
+      <td>${r.burst}</td>
+      <td><strong>${r.completion}</strong></td>
+      <td>${r.completion} − ${r.arrival} = <strong>${r.turnaround}</strong></td>
+      <td>${r.turnaround} − ${r.burst} = <strong>${r.waiting}</strong></td>
+      <td><strong>${r.response}</strong></td>
+    </tr>
+  `).join("");
+
+  return `
+    <div style="padding:16px; border-radius:16px; background:rgba(255,255,255,0.22); border:1px solid var(--glass-border);">
+      <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px;">
+        <strong style="font-size:15px;">${ALGO_TITLES[key] || key}</strong>
+        <div style="font-family:var(--font-mono); font-size:12px;">
+          Avg Wait: <strong>${algo.avg_waiting}</strong> &nbsp;|&nbsp;
+          Avg TAT: <strong>${algo.avg_turnaround}</strong> &nbsp;|&nbsp;
+          Avg Response: <strong>${algo.avg_response}</strong> &nbsp;|&nbsp;
+          Switches: <strong>${algo.context_switches}</strong>
+        </div>
+      </div>
+
+      <div style="display:flex; width:100%; border-radius:10px; overflow:hidden; margin-bottom:12px; border:1px solid rgba(255,255,255,0.5);">
+        ${ganttHtml}
+      </div>
+
+      <table class="glass-table" style="font-size:13px;">
+        <thead>
+          <tr><th>PID</th><th>AT</th><th>Prio</th><th>BT</th><th>CT</th><th>Turnaround (CT−AT)</th><th>Waiting (TAT−BT)</th><th>Response</th></tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function showAlgo(which) {
+  selectedAlgo = which;
+  if (!monitorData) return;
+  const algos = monitorData.live_algorithms || {};
+  const keys = which === "all" ? ["preemptive_priority", "fcfs", "sjf", "round_robin"] : [which];
+  document.getElementById("algo-container").innerHTML = keys.map((k) => renderAlgoBlock(k, algos[k])).join("");
+}
+
+async function loadAllKernelData() {
+  const { data } = await HEMS.api("/api/monitor");
+  monitorData = data;
+
+  // 1. PCBs
+  const procs = (data.scheduler && data.scheduler.all_processes) || [];
+  document.getElementById("pcb-body").innerHTML = procs.map((p) => `
+    <tr>
+      <td style="font-family:var(--font-mono); font-weight:700;">${p.pid}</td>
+      <td>${p.name}</td>
+      <td>${p.arrival_time}</td>
+      <td><span class="badge ${p.priority <= 3 ? 'badge-critical' : 'badge-info'}">P${p.priority}</span></td>
+      <td>${p.burst_time}</td>
+      <td><strong>${p.state}</strong></td>
+    </tr>
+  `).join("");
+
+  // 2. Algorithms + Summary Comparison Table
+  showAlgo(selectedAlgo);
+  const algos = data.live_algorithms || {};
+  const summaryRows = [
+    ["Preemptive Priority (Recommended)", algos.preemptive_priority],
+    ["FCFS", algos.fcfs],
+    ["SJF (Non-preemptive)", algos.sjf],
+    ["Round Robin (Q=3)", algos.round_robin],
+  ].filter(([, a]) => Boolean(a));
+  document.getElementById("algo-summary-body").innerHTML = summaryRows.map(([label, a]) => `
+    <tr>
+      <td><strong>${label}</strong></td>
+      <td>${a.avg_waiting}</td>
+      <td>${a.avg_turnaround}</td>
+      <td>${a.avg_response}</td>
+      <td><strong>${a.critical_avg_response}</strong></td>
+      <td>${a.context_switches}</td>
+    </tr>
+  `).join("");
+
+  // 3. Semaphores
+  const sems = data.semaphores || {};
+  document.getElementById("sem-body").innerHTML = Object.entries(sems).map(([hid, facs]) => `
+    <tr>
+      <td style="font-family:var(--font-mono); font-weight:700;">${hid.replace("HOSP-", "")}</td>
+      <td>${facs.ICU ? facs.ICU.free_units + "/" + facs.ICU.total_units + " (v" + facs.ICU.version + ")" : "—"}</td>
+      <td>${facs.VENTILATOR ? facs.VENTILATOR.free_units + "/" + facs.VENTILATOR.total_units : "—"}</td>
+      <td>${facs.EMERGENCY ? facs.EMERGENCY.free_units + "/" + facs.EMERGENCY.total_units : "—"}</td>
+    </tr>
+  `).join("");
+
+  // 4. Mutex Events
+  document.getElementById("mon-events").innerHTML = (data.events || []).slice(-10).reverse()
+    .map((e) => `<div><strong>[${e.type}]</strong> ${e.detail}</div>`).join("") || "No mutex events yet.";
+
+  // 5. Banker
+  const b = data.banker || {};
+  const safe = b.safe_state || {};
+  document.getElementById("mon-banker").innerHTML = `
+    <p style="margin-top:0;">Available [ICU, Vent, Spec]: <strong style="font-family:var(--font-mono);">[${(b.available || []).join(", ")}]</strong></p>
+    <p><span class="badge ${safe.safe ? 'badge-ok' : 'badge-critical'}">${safe.safe ? '● SAFE' : '▲ UNSAFE'}</span> ${safe.reason || ""}</p>
+    <table class="glass-table">
+      <thead><tr><th>Req</th><th>Alloc</th><th>Max</th><th>Need</th></tr></thead>
+      <tbody>
+        ${(b.rows || []).map((r) => `<tr><td>${r.pid}</td><td>[${r.allocation.join(",")}]</td><td>[${r.max_need.join(",")}]</td><td>[${r.remaining_need.join(",")}]</td></tr>`).join("")}
+      </tbody>
+    </table>
+  `;
+
+  // 6. Auto-run live Race & Deadlock proofs so they are immediately visible without dummy buttons
+  const [raceRes, deadRes] = await Promise.all([
+    HEMS.api("/api/simulator/run", { method: "POST", body: JSON.stringify({ scenario: "race_condition", trials: 200 }) }),
+    HEMS.api("/api/simulator/run", { method: "POST", body: JSON.stringify({ scenario: "deadlock" }) }),
+  ]);
+  const r = raceRes.data;
+  const d = deadRes.data;
+  document.getElementById("auto-proofs").innerHTML = `
+    <div style="padding:12px; border-radius:12px; background:var(--status-ok-bg);">
+      <strong>Mutex Race Test (${r.trials} concurrent trials):</strong><br>
+      Without Mutex: <strong>${r.without_mutex_double_bookings}</strong> double-bookings &nbsp;|&nbsp;
+      With Mutex: <strong>${r.with_mutex_double_bookings}</strong> double-bookings
+    </div>
+    <div style="padding:12px; border-radius:12px; background:var(--status-warn-bg);">
+      <strong>Deadlock RAG Recovery:</strong><br>
+      Cycle: <code>${d.recovery.cycle.join(" → ")}</code><br>
+      Victim released: <strong>${d.recovery.victim}</strong> (${d.recovery.released.join(", ")})
+    </div>
+  `;
+}
+
+loadAllKernelData();
+</script>
+{% endblock %}

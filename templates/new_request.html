@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">New Transfer Request</h1>
+    <p class="page-desc">Creates a NEW OS process, assigns clinical urgency priority, and checks for duplicates.</p>
+  </div>
+</div>
+
+<div id="dup-banner" class="glass glass-card" style="display:none; margin-bottom:20px; border-color:var(--status-warn);">
+  <strong style="color:var(--status-warn);">▲ Duplicate Referral Warning:</strong>
+  <span id="dup-text"></span>
+  <button type="button" class="keycap-btn keycap-coral keycap-sm" style="margin-left:12px;" onclick="submitRequest(true)">Override & Create</button>
+</div>
+
+<form id="req-form" class="glass glass-card" style="max-width:720px;">
+  <div class="grid-2" style="margin-bottom:18px;">
+    <div>
+      <label for="from_hospital" style="display:block; font-size:13px; margin-bottom:6px;">Referring Hospital</label>
+      <select id="from_hospital" class="glass-select">
+        <option value="HOSP-A">HOSP-A • St. Martha's Central</option>
+        <option value="HOSP-B">HOSP-B • City General Hospital</option>
+        <option value="HOSP-C">HOSP-C • Metro Neuro & Trauma</option>
+        <option value="HOSP-D">HOSP-D • Apex Heart Institute</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="case_type" style="display:block; font-size:13px; margin-bottom:6px;">Case Category (Priority)</label>
+      <select id="case_type" class="glass-select">
+        <option value="cardiac_arrest">Cardiac Arrest (Priority 1)</option>
+        <option value="trauma">Major Trauma (Priority 2)</option>
+        <option value="stroke">Stroke / Neuro (Priority 3)</option>
+        <option value="specialist_enquiry">Specialist Enquiry (Priority 6)</option>
+        <option value="planned_transfer">Planned Transfer (Priority 7)</option>
+        <option value="discharge_back">Discharge-back (Priority 8)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:18px;">
+    <div>
+      <label for="patient_hash" style="display:block; font-size:13px; margin-bottom:6px;">Patient Reference ID (Masked)</label>
+      <input id="patient_hash" class="glass-input" value="PAT-9042" required>
+    </div>
+    <div>
+      <span style="display:block; font-size:13px; margin-bottom:6px;">Required Facilities</span>
+      <div style="display:flex; flex-wrap:wrap; gap:10px; padding-top:6px;">
+        <label><input type="checkbox" name="fac" value="ICU" checked> ICU</label>
+        <label><input type="checkbox" name="fac" value="VENTILATOR" checked> Ventilator</label>
+        <label><input type="checkbox" name="fac" value="NEURO"> Neuro</label>
+        <label><input type="checkbox" name="fac" value="EMERGENCY"> Emergency</label>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:22px;">
+    <label style="display:flex; align-items:center; gap:10px; font-size:14px;">
+      <input id="consent_given" type="checkbox" checked>
+      <span>Consent-based minimal summary packet approved for sharing</span>
+    </label>
+  </div>
+
+  <div style="display:flex; gap:12px; align-items:center;">
+    <button type="submit" class="keycap-btn keycap-blue">Admit & Find Matches</button>
+    <span id="req-status" style="font-size:13px; color:var(--text-secondary);"></span>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function submitRequest(forceDuplicate = false) {
+  const facilities = Array.from(document.querySelectorAll('input[name="fac"]:checked')).map((el) => el.value);
+  const payload = {
+    from_hospital: document.getElementById("from_hospital").value,
+    case_type: document.getElementById("case_type").value,
+    patient_hash: document.getElementById("patient_hash").value.trim(),
+    facilities_needed: facilities.length ? facilities : ["ICU"],
+    consent_given: document.getElementById("consent_given").checked,
+    force_duplicate: forceDuplicate,
+  };
+
+  const { ok, status, data } = await HEMS.api("/api/requests", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  if (status === 409 && data.code === "DUPLICATE_DETECTED") {
+    document.getElementById("dup-banner").style.display = "block";
+    document.getElementById("dup-text").textContent = data.warning;
+    return;
+  }
+  if (!ok) {
+    document.getElementById("req-status").textContent = data.error || "Unable to create request.";
+    return;
+  }
+  localStorage.setItem("hems_last_req", JSON.stringify(data.request));
+  window.location.href = "/matches";
+}
+
+document.getElementById("req-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  submitRequest(false);
+});
+</script>
+{% endblock %}
+

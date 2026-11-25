@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Request Tracker</h1>
+    <p class="page-desc">Five-state OS process lifecycle (NEW → READY → RUNNING → WAITING → TERMINATED) and ambulance ETA.</p>
+  </div>
+</div>
+
+<div id="tracker-list" class="grid-2"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async function loadTracker() {
+  const { data } = await HEMS.api("/api/requests");
+  const reqs = data.requests || [];
+  const states = ["NEW", "READY", "RUNNING", "WAITING", "TERMINATED"];
+
+  document.getElementById("tracker-list").innerHTML = reqs.map((r) => `
+    <article class="glass glass-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div>
+          <strong style="font-family:var(--font-mono); font-size:16px;">${r.request_id}</strong>
+          <span style="font-size:13px; color:var(--text-secondary); margin-left:8px;">${r.case_type.replace("_", " ")}</span>
+        </div>
+        <span class="badge ${r.priority <= 3 ? 'badge-critical' : 'badge-info'}">P${r.priority} • ${r.state}</span>
+      </div>
+
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
+        ${states.map((s) => `<span class="badge ${s === r.state ? 'badge-ok' : ''}" style="${s === r.state ? '' : 'opacity:0.45;'}">${s}</span>`).join("")}
+      </div>
+
+      ${r.accepted_by ? `<p style="font-size:13px; color:var(--status-ok); margin:0 0 10px;">✓ Accepted by ${r.accepted_by} • Ambulance ETA: ${r.ambulance_eta_min || 14} min</p>` : ""}
+
+      <div style="font-size:12px; color:var(--text-secondary);">
+        ${(r.timeline || []).map((ev) => `<div>• <strong>${ev.state}</strong>: ${ev.note}</div>`).join("")}
+      </div>
+    </article>
+  `).join("");
+})();
+</script>
+{% endblock %}
+

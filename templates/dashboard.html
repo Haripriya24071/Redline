@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title" data-i18n="p1_title">Live Emergency Dispatch • Kanakapura</h1>
+    <p class="page-desc" data-i18n="p1_desc">Real-world view from Jain University Health Centre. Enter a patient to assign the best nearby hospital, then inspect the OS Kernel on Screen 2.</p>
+  </div>
+  <a class="keycap-btn keycap-lime" href="{{ url_for('screen_monitor') }}" data-i18n="p1_cta">2. View OS Kernel Behind This →</a>
+</div>
+
+<div class="grid-2" style="margin-bottom:24px; align-items:start;">
+  <!-- Left: Real-World Patient Intake -->
+  <form id="live-dispatch-form" class="glass glass-card">
+    <h2 style="margin-top:0; font-size:18px;" data-i18n="p1_form_title">Patient Intake &amp; Priority Dispatch</h2>
+
+    <div class="grid-2" style="margin-bottom:14px;">
+      <div>
+        <label for="patient_name" style="display:block; font-size:13px; margin-bottom:6px;" data-i18n="p1_pat_label">Patient Name / ID</label>
+        <input id="patient_name" class="glass-input" value="Aarav R. (PAT-201)" required>
+      </div>
+      <div>
+        <label for="case_type" style="display:block; font-size:13px; margin-bottom:6px;" data-i18n="p1_cond_label">Medical Condition</label>
+        <select id="case_type" class="glass-select">
+          <option value="cardiac_arrest">Cardiac Arrest (Critical • P1)</option>
+          <option value="trauma">Road Accident Trauma (Critical • P2)</option>
+          <option value="stroke">Stroke / Neuro (Critical • P3)</option>
+          <option value="record_share">Lab / ICU Monitoring (Medium • P5)</option>
+          <option value="planned_transfer">Planned Dialysis (Routine • P7)</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-bottom:18px;">
+      <span style="display:block; font-size:13px; margin-bottom:6px;" data-i18n="p1_fac_label">Required Hospital Facilities</span>
+      <div style="display:flex; flex-wrap:wrap; gap:12px;">
+        <label><input type="checkbox" name="req_fac" value="ICU" checked> ICU Bed</label>
+        <label><input type="checkbox" name="req_fac" value="VENTILATOR" checked> Ventilator</label>
+        <label><input type="checkbox" name="req_fac" value="NEURO"> Neuro Unit</label>
+        <label><input type="checkbox" name="req_fac" value="EMERGENCY"> Emergency</label>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+      <button type="submit" class="keycap-btn keycap-blue" data-i18n="p1_dispatch_btn">Dispatch Patient</button>
+      <button type="button" class="keycap-btn keycap-white keycap-sm" data-i18n="p1_traffic_btn" onclick="addBusyTraffic()">+ Add Busy Hour Traffic</button>
+    </div>
+
+    <div id="dispatch-result" style="display:none; margin-top:18px; padding:16px; border-radius:14px; background:rgba(163,230,53,0.14); border:1px solid rgba(163,230,53,0.45);"></div>
+  </form>
+
+  <!-- Right: Route Map from Jain University -->
+  <div class="glass glass-card">
+    <h2 style="margin-top:0; font-size:18px;" data-i18n="p1_map_title">Kanakapura → Bengaluru Route Map</h2>
+    <p style="font-size:13px; color:var(--text-secondary); margin-top:0;">Origin: <strong>Jain (Deemed-to-be) University, Kanakapura Rd</strong></p>
+    <svg id="route-map" viewBox="0 0 460 240" width="100%" height="230" role="img" aria-label="Nearby hospitals from Jain University Kanakapura">
+      <g id="map-routes"></g>
+      <g id="map-pins"></g>
+    </svg>
+  </div>
+</div>
+
+<!-- Bottom: Live Nearby Hospital Cards -->
+<section>
+  <h2 style="font-size:18px; margin-bottom:14px;" data-i18n="p1_nearby_title">Nearby Hospitals (Live Simulated Bed Availability)</h2>
+  <div id="nearby-hospitals" class="grid-3"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PIN_POS = {
+  "HOSP-JAIN": [70, 195],
+  "HOSP-DSH": [145, 165],
+  "HOSP-RRM": [210, 95],
+  "HOSP-BGS": [290, 115],
+  "HOSP-APL": [375, 140],
+  "HOSP-SGR": [395, 65],
+};
+
+let lastAssignedId = null;
+
+function renderDots(free, total) {
+  let out = "";
+  for (let i = 0; i < total; i++) {
+    const ok = i < free;
+    out += `<span style="display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; background:${ok ? '#a3e635' : 'rgba(255,255,255,0.18)'};"></span>`;
+  }
+  return out;
+}
+
+async function refreshHospitals() {
+  const { data } = await HEMS.api("/api/hospitals");
+  const hospitals = data.hospitals || [];
+
+  // Draw map pins
+  const pins = hospitals.map((h) => {
+    const [x, y] = PIN_POS[h.hospital_id] || [220, 120];
+    const isOrigin = h.hospital_id === "HOSP-JAIN";
+    const isWinner = h.hospital_id === lastAssignedId;
+    const fill = isOrigin ? "#fb7185" : (isWinner ? "#a3e635" : "#2563eb");
+    const r = isOrigin || isWinner ? 11 : 8;
+    return `
+      <circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="#ffffff" stroke-width="2"/>
+      <text x="${x}" y="${y - 14}" text-anchor="middle" fill="currentColor" font-size="10" font-family="monospace" font-weight="700">${h.hospital_id.replace('HOSP-', '')}</text>
+    `;
+  }).join("");
+  document.getElementById("map-pins").innerHTML = pins;
+
+  const routesEl = document.getElementById("map-routes");
+  if (lastAssignedId && PIN_POS[lastAssignedId]) {
+    const [x1, y1] = PIN_POS["HOSP-JAIN"];
+    const [x2, y2] = PIN_POS[lastAssignedId];
+    routesEl.innerHTML = `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#a3e635" stroke-width="3" stroke-dasharray="6 4"/>`;
+  } else {
+    routesEl.innerHTML = "";
+  }
+
+  // Render receiving hospital cards (exclude origin)
+  document.getElementById("nearby-hospitals").innerHTML = hospitals
+    .filter((h) => h.hospital_id !== "HOSP-JAIN")
+    .map((h) => {
+      const icu = h.facilities.ICU || { free_units: 0, total_units: 0 };
+      const vent = h.facilities.VENTILATOR || { free_units: 0, total_units: 0 };
+      const isWinner = h.hospital_id === lastAssignedId;
+      return `
+        <article class="glass glass-card" style="${isWinner ? 'border:2px solid #a3e635; box-shadow:0 0 24px rgba(163,230,53,0.35);' : ''}">
+          <div style="display:flex; justify-content:space-between; align-items:start; gap:8px;">
+            <div>
+              <div style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted);">${h.hospital_id}</div>
+              <h3 style="margin:2px 0 4px; font-size:16px;">${h.name}</h3>
+            </div>
+            <span class="badge ${isWinner ? 'badge-ok' : (icu.free_units > 0 ? 'badge-info' : 'badge-critical')}">
+              ${isWinner ? 'ASSIGNED ✓' : icu.free_units + ' ICU Free'}
+            </span>
+          </div>
+          <p style="font-size:12px; color:var(--text-secondary); margin:0 0 12px;">${h.address}</p>
+          <div style="font-size:12px; margin-bottom:6px;">ICU: ${renderDots(icu.free_units, icu.total_units)} (${icu.free_units}/${icu.total_units})</div>
+          <div style="font-size:12px;">Vent: ${renderDots(vent.free_units, vent.total_units)} (${vent.free_units}/${vent.total_units})</div>
+        </article>
+      `;
+    }).join("");
+}
+
+async function addBusyTraffic() {
+  const routine = [
+    { case_type: "planned_transfer", patient_hash: "DIALYSIS-" + Math.floor(Math.random() * 900 + 100), facilities_needed: ["EMERGENCY"] },
+    { case_type: "record_share", patient_hash: "LAB-" + Math.floor(Math.random() * 900 + 100), facilities_needed: ["EMERGENCY"] },
+    { case_type: "specialist_enquiry", patient_hash: "OPD-" + Math.floor(Math.random() * 900 + 100), facilities_needed: ["SPECIALIST"] },
+  ];
+  for (const item of routine) {
+    await HEMS.api("/api/requests", {
+      method: "POST",
+      body: JSON.stringify({ from_hospital: "HOSP-JAIN", ...item }),
+    });
+  }
+  const resBox = document.getElementById("dispatch-result");
+  resBox.style.display = "block";
+  resBox.innerHTML = `<strong>Busy Hour Traffic Added:</strong> 3 routine tasks (Dialysis, Lab, OPD) queued. Now dispatch a <strong>Cardiac Arrest</strong> to see it pre-empt them on Page 2!`;
+}
+
+async function confirmHold(holdId, action) {
+  await HEMS.api(`/api/transfers/${holdId}/respond`, {
+    method: "POST",
+    body: JSON.stringify({ action }),
+  });
+  await refreshHospitals();
+  const resBox = document.getElementById("dispatch-result");
+  resBox.innerHTML += `<div style="margin-top:8px; font-family:var(--font-mono); font-size:12px;">Hospital response recorded: <strong>${action}</strong>. Check Page 2 (OS Kernel) to see the state transition!</div>`;
+}
+
+document.getElementById("live-dispatch-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const facs = Array.from(document.querySelectorAll('input[name="req_fac"]:checked')).map((el) => el.value);
+  const caseType = document.getElementById("case_type").value;
+  const patName = document.getElementById("patient_name").value.trim() || ("PAT-" + Math.floor(Math.random() * 9000 + 1000));
+
+  const { ok, data } = await HEMS.api("/api/requests", {
+    method: "POST",
+    body: JSON.stringify({
+      from_hospital: "HOSP-JAIN",
+      case_type: caseType,
+      patient_hash: patName,
+      facilities_needed: facs.length ? facs : ["ICU"],
+      force_duplicate: true,
+    }),
+  });
+  if (!ok) return;
+
+  const req = data.request;
+  const { data: mData } = await HEMS.api("/api/matches", {
+    method: "POST",
+    body: JSON.stringify({ from_hospital: "HOSP-JAIN", facilities_needed: req.facilities_needed }),
+  });
+  const best = mData.eligible && mData.eligible[0];
+  const resBox = document.getElementById("dispatch-result");
+  resBox.style.display = "block";
+
+  if (!best) {
+    resBox.innerHTML = `<strong>No nearby hospital currently has all required beds free.</strong> Patient placed in WAITING queue.`;
+    return;
+  }
+
+  const { data: refData } = await HEMS.api("/api/refer", {
+    method: "POST",
+    body: JSON.stringify({ request_id: req.request_id, hospital_ids: [best.hospital_id], batch_size: 1 }),
+  });
+  const hold = refData.holds && refData.holds[0];
+  lastAssignedId = best.hospital_id;
+  await refreshHospitals();
+
+  resBox.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <div>
+        <strong style="font-size:15px;">Dispatched ${patName} → ${best.name}</strong>
+        <div style="font-size:13px; color:var(--text-secondary);">Distance: ${best.distance_km} km • Ambulance ETA: ~${best.eta_min} min • Priority P${req.priority}</div>
+      </div>
+      ${hold ? `
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="keycap-btn keycap-lime keycap-sm" onclick="confirmHold('${hold.hold_id}', 'ACCEPT')">Hospital Accepts</button>
+        <button type="button" class="keycap-btn keycap-coral keycap-sm" onclick="confirmHold('${hold.hold_id}', 'REJECT')">Reject</button>
+      </div>` : ""}
+    </div>
+  `;
+});
+
+refreshHospitals();
+</script>
+{% endblock %}

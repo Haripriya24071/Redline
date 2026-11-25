@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Analytics & Scheduling Benchmark</h1>
+    <p class="page-desc">Comparison of FCFS, SJF, Preemptive Priority, and Round Robin (Q=3) on the 8-process case-study workload.</p>
+  </div>
+</div>
+
+<div class="glass glass-card" style="margin-bottom:24px;">
+  <h2 style="margin-top:0; font-size:18px;">Algorithm Comparison (Accessible Data Table)</h2>
+  <table class="glass-table">
+    <thead>
+      <tr>
+        <th>Algorithm</th>
+        <th>Avg Wait</th>
+        <th>Avg Turnaround</th>
+        <th>Critical Avg Wait (T6–T8)</th>
+        <th>Critical Avg Response</th>
+        <th>Context Switches</th>
+      </tr>
+    </thead>
+    <tbody id="bench-body"></tbody>
+  </table>
+</div>
+
+<div class="glass glass-card">
+  <h2 style="margin-top:0; font-size:18px;">Critical First-Response Comparison (Lower is Better)</h2>
+  <div id="bench-bars" style="display:flex; flex-direction:column; gap:12px;"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async function loadAnalytics() {
+  const { data } = await HEMS.api("/api/analytics");
+  const b = data.benchmark || {};
+  const list = [
+    { label: "FCFS", d: b.fcfs },
+    { label: "SJF (Non-preemptive)", d: b.sjf },
+    { label: "Preemptive Priority", d: b.preemptive_priority },
+    { label: "Round Robin (Q=3)", d: b.round_robin },
+  ];
+
+  document.getElementById("bench-body").innerHTML = list.map((item) => `
+    <tr>
+      <td><strong>${item.label}</strong></td>
+      <td>${item.d.avg_waiting}</td>
+      <td>${item.d.avg_turnaround}</td>
+      <td>${item.d.critical_avg_waiting}</td>
+      <td><strong>${item.d.critical_avg_response}</strong></td>
+      <td>${item.d.context_switches}</td>
+    </tr>
+  `).join("");
+
+  document.getElementById("bench-bars").innerHTML = list.map((item) => {
+    const val = item.d.critical_avg_response;
+    const pct = Math.min(100, Math.round((val / 25) * 100));
+    return `
+      <div>
+        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+          <span>${item.label}</span>
+          <span style="font-family:var(--font-mono);">${val} units</span>
+        </div>
+        <div style="height:12px; border-radius:999px; background:rgba(255,255,255,0.1); overflow:hidden;">
+          <div style="height:100%; width:${Math.max(4, pct)}%; background:${val === 0 ? '#a3e635' : '#60a5fa'}; border-radius:999px;"></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+})();
+</script>
+{% endblock %}
+

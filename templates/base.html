@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Redline • Emergency Hospital OS Coordination</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="app-shell">
+    <header class="glass topbar" role="banner">
+      <a class="brand" href="{{ url_for('screen_dashboard') }}">
+        <span class="brand-mark" aria-hidden="true">R+</span>
+        <span>
+          <span class="brand-title">Redline</span>
+          <span class="brand-sub" data-i18n="brand_sub">Kanakapura → Bengaluru Network</span>
+        </span>
+      </a>
+
+      <nav class="nav-pills" aria-label="Primary navigation">
+        <a class="nav-pill {{ 'active' if active_page == 'dashboard' }}" href="{{ url_for('screen_dashboard') }}" data-i18n="nav_dispatch">1. Patient Dispatch</a>
+        <a class="nav-pill {{ 'active' if active_page == 'monitor' }}" href="{{ url_for('screen_monitor') }}" data-i18n="nav_kernel">2. OS Kernel &amp; Math</a>
+        <a class="nav-pill {{ 'active' if active_page == 'availability' }}" href="{{ url_for('screen_availability') }}" data-i18n="nav_beds">3. Bed Board</a>
+      </nav>
+
+      <div class="topbar-controls">
+        <select id="lang-select" class="glass-select compact-select" aria-label="Language">
+          <option value="en">EN</option>
+          <option value="hi">HI</option>
+          <option value="kn">KN</option>
+        </select>
+
+        <button id="theme-toggle" type="button" class="keycap-btn keycap-white keycap-sm">☀ Light</button>
+      </div>
+    </header>
+
+    <main id="main-content" tabindex="-1">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="glass sim-banner" role="contentinfo">
+      <span data-i18n="sim_notice">Redline Academic Prototype • Real Nearby Locations with Simulated Bed Counts • Decision Support Only</span>
+      <button type="button" class="keycap-btn keycap-white keycap-sm" data-i18n="reset_btn" onclick="HEMS.resetDemo()">Reset</button>
+    </footer>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
