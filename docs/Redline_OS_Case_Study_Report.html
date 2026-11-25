@@ -41,12 +41,13 @@
   /* ── Page dividers for print ── */
   @page {
     size: A4;
-    margin: 15mm 16mm;
+    margin: 13mm 15mm;
   }
   @media print {
-    body { padding: 0; max-width: 100%; font-size: 9.5pt; }
+    body { padding: 0; max-width: 100%; font-size: 9.5pt; line-height: 1.5; }
     .page-break { page-break-before: always; }
     .no-break { page-break-inside: avoid; }
+    h1, h2, h3 { page-break-after: avoid; }
     a { color: inherit; text-decoration: none; }
   }
 
@@ -312,7 +313,7 @@
 </div>
 
 <!-- ══════════════════════ SEC 1: ABSTRACT ══════════════════════ -->
-<div class="page-break"></div>
+
 <h1><span class="sec-num">1.</span> Abstract</h1>
 <p>
 Hospital computing environments must simultaneously orchestrate time-critical emergency care (cardiac arrest,
@@ -378,7 +379,7 @@ assumptions were established at the outset:</p>
 </ul>
 
 <!-- ══════════════════════ SEC 4: SYSTEM ══════════════════════ -->
-<div class="page-break"></div>
+
 <h1><span class="sec-num">4.</span> System Description — 10-Hospital Network</h1>
 <p>
 Redline connects the origin node — Jain University Health Centre (Kanakapura Rd) — to nine receiving
@@ -606,7 +607,7 @@ two-phase hold.
 </div>
 
 <!-- ══════════════════════ SEC 6: OS CONCEPTS ══════════════════════ -->
-<div class="page-break"></div>
+
 <h1><span class="sec-num">6.</span> OS Concepts, 5-State Lifecycle &amp; Real-Time Classification</h1>
 <p>
 Every hospital task is instantiated as a <strong>Process Control Block (PCB)</strong> carrying its PID, subsystem category,
@@ -695,7 +696,7 @@ Redline includes a 10-process clinical mix covering all five subsystems:</p>
 </div>
 
 <!-- ══════════════════════ SEC 7: SCHEDULING ══════════════════════ -->
-<div class="page-break"></div>
+
 <h1><span class="sec-num">7.</span> CPU Scheduling Analysis, Calculations &amp; Gantt Charts</h1>
 <p>
 To compare policies without bias, all algorithms are evaluated on the standard eight-process workload (T1–T8),
@@ -885,7 +886,7 @@ used throughout: <strong>TAT = CT − AT</strong>, <strong>WT = TAT − BT</stro
 <strong>Observation:</strong> SJF and SRTF achieve the lowest overall average wait (11.00 ticks) on this workload, but still delay Cardiac Arrest (T8) until t=25 (RT=19) behind shorter routine tasks — an inadequate outcome for a P1 emergency.</div>
 
 <!-- 7.3 Preemptive Priority -->
-<div class="page-break"></div>
+
 <h2>7.3 Preemptive Priority Scheduling <em>(Recommended Core Policy)</em></h2>
 <div class="tbl-wrap no-break">
 <table>
@@ -973,7 +974,7 @@ used throughout: <strong>TAT = CT − AT</strong>, <strong>WT = TAT − BT</stro
 </div>
 
 <!-- ══════════════════════ SEC 8: STARVATION ══════════════════════ -->
-<div class="page-break"></div>
+
 <h1><span class="sec-num">8.</span> Impact of Continuously Arriving Emergencies</h1>
 <p>
 Under strict static Preemptive Priority, a sustained burst of Priority-1 emergencies creates two well-known
@@ -1133,7 +1134,7 @@ Redline layers three defences:
 <div class="fig-caption">Figure 8. Banker's Algorithm safe-state verification for Hospital B. Req-B is granted (safe sequence A→B→C exists); Req-C is denied because granting it would leave no safe completion sequence.</div>
 
 <!-- ══════════════════════ SEC 10: HYBRID ══════════════════════ -->
-<div class="page-break"></div>
+
 <h1><span class="sec-num">10.</span> Proposed Hybrid Policy &amp; Expected OS Behaviour</h1>
 <p>
 Redline adopts a hybrid <strong>Preemptive Priority + Aging (−1 per 10 ticks)</strong> kernel paired with
@@ -1244,7 +1245,7 @@ Process Builder, SVG Gantt &amp; Quantum Sensitivity Lab, and CSV Report Export.
 <p class="small">Figure 9. All 19 automated pytest cases passed. The extended suite covers the full 8-algorithm benchmark and 10-process clinical mix.</p>
 
 <!-- ══════════════════════ SEC 12–14 ══════════════════════ -->
-<div class="page-break"></div>
+
 <h1><span class="sec-num">12.</span> Recommended Additional Features</h1>
 <ul style="padding-left:1.4rem;color:var(--ink-soft);font-size:9.5pt;line-height:2;">
   <li><strong>Multi-Core SMP Hospital CPU Scheduling.</strong> Extend the single-CPU scheduler to N-core symmetric multiprocessing with dedicated core affinity for Emergency Triage, ICU Telemetry, and Lab Processing.</li>
