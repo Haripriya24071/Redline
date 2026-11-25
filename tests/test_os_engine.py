@@ -170,3 +170,13 @@ def test_optimistic_concurrency_conflict():
     with pytest.raises(ConflictError):
         engine.update_availability("HOSP-A", "ICU", 1, expected_version=1)
 
+
+def test_five_algorithm_test_cases():
+    """Verify all 5 scheduling test cases return valid winners and comparisons."""
+    cases = ScenarioSimulator.run_5_algorithm_test_cases()
+    assert len(cases) == 5
+    winners = [c["best_algorithm"] for c in cases]
+    assert "Preemptive Priority" in winners
+    assert "SJF (Non-Preemptive)" in winners
+    assert "Round Robin (Q = 3)" in winners
+

@@ -94,6 +94,42 @@ class HEMSState:
                 "trust_score": 0.88,
                 "incoming_load": 1,
             },
+            {
+                "hospital_id": "HOSP-KNG",
+                "name": "Kanakapura Taluk General",
+                "address": "Kanakapura Town, Ramanagara",
+                "lat": 12.5462,
+                "lng": 77.4199,
+                "trust_score": 0.86,
+                "incoming_load": 1,
+            },
+            {
+                "hospital_id": "HOSP-NAR",
+                "name": "Narayana Health City",
+                "address": "Bommasandra, Hosur Rd",
+                "lat": 12.8105,
+                "lng": 77.6948,
+                "trust_score": 0.95,
+                "incoming_load": 2,
+            },
+            {
+                "hospital_id": "HOSP-MNI",
+                "name": "Manipal Hospital",
+                "address": "Jayanagar 9th Block, Bengaluru",
+                "lat": 12.9178,
+                "lng": 77.5912,
+                "trust_score": 0.94,
+                "incoming_load": 2,
+            },
+            {
+                "hospital_id": "HOSP-STJ",
+                "name": "St. John's Medical College",
+                "address": "Koramangala, Bengaluru",
+                "lat": 12.9293,
+                "lng": 77.6209,
+                "trust_score": 0.93,
+                "incoming_load": 3,
+            },
         ]
 
         self.reservation = ReservationEngine(hold_ttl_seconds=180)
@@ -104,6 +140,10 @@ class HEMSState:
             "HOSP-BGS": [("ICU", 10, 4, fresh), ("EMERGENCY", 8, 4, fresh), ("VENTILATOR", 6, 3, fresh), ("NEURO", 4, 3, fresh), ("SPECIALIST", 5, 3, fresh)],
             "HOSP-APL": [("ICU", 8, 3, recent), ("EMERGENCY", 6, 3, recent), ("VENTILATOR", 5, 2, recent), ("NEURO", 3, 2, recent), ("SPECIALIST", 4, 2, recent)],
             "HOSP-SGR": [("ICU", 5, 2, stale), ("EMERGENCY", 5, 2, stale), ("VENTILATOR", 3, 1, stale), ("NEURO", 2, 1, stale), ("SPECIALIST", 2, 1, stale)],
+            "HOSP-KNG": [("ICU", 4, 2, fresh), ("EMERGENCY", 6, 4, fresh), ("VENTILATOR", 2, 1, fresh), ("NEURO", 1, 0, fresh), ("SPECIALIST", 2, 1, fresh)],
+            "HOSP-NAR": [("ICU", 12, 5, fresh), ("EMERGENCY", 10, 5, fresh), ("VENTILATOR", 8, 4, fresh), ("NEURO", 4, 2, fresh), ("SPECIALIST", 6, 4, fresh)],
+            "HOSP-MNI": [("ICU", 8, 3, fresh), ("EMERGENCY", 8, 4, fresh), ("VENTILATOR", 5, 3, fresh), ("NEURO", 3, 2, fresh), ("SPECIALIST", 4, 3, fresh)],
+            "HOSP-STJ": [("ICU", 10, 4, recent), ("EMERGENCY", 10, 5, recent), ("VENTILATOR", 6, 3, recent), ("NEURO", 4, 2, recent), ("SPECIALIST", 5, 3, recent)],
         }
         for hid, items in seed_facs.items():
             for fac, total, free, ts in items:
@@ -497,6 +537,7 @@ def api_monitor():
             "events": state.reservation.event_log[-20:],
             "audit_log": state.audit_log[-15:],
             "surge_mode": state.surge_mode,
+            "test_cases": ScenarioSimulator.run_5_algorithm_test_cases(),
         }
     )
 

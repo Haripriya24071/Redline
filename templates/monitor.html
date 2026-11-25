@@ -66,7 +66,7 @@
 </section>
 
 <!-- 4. Banker's Algorithm & Live Experimental Proof -->
-<section class="grid-2">
+<section class="grid-2" style="margin-bottom:22px;">
   <div class="glass glass-card">
     <h2 style="margin-top:0; font-size:18px;" data-i18n="p2_sec5">Topic E • Deadlock Avoidance (Banker's Algorithm)</h2>
     <div id="mon-banker" style="font-size:13px;"></div>
@@ -76,6 +76,17 @@
     <h2 style="margin-top:0; font-size:18px;" data-i18n="p2_sec6">Topic F • Experimental Proof (Race Condition &amp; Deadlock)</h2>
     <div id="auto-proofs" style="font-size:13px; display:flex; flex-direction:column; gap:10px;">Running live checks...</div>
   </div>
+</section>
+
+<!-- 5. 5 Algorithm Test Cases -->
+<section class="glass glass-card">
+  <h2 style="margin-top:0; font-size:18px;">Topic G • 5 Hospital Test Cases (Which Algorithm Wins When?)</h2>
+  <table class="glass-table" style="font-size:13px;">
+    <thead>
+      <tr><th>Case</th><th>Scenario</th><th>Best Algorithm</th><th>Measured Result</th><th>Why It Wins</th></tr>
+    </thead>
+    <tbody id="cases-body"></tbody>
+  </table>
 </section>
 {% endblock %}
 
@@ -240,6 +251,17 @@ async function loadAllKernelData() {
       Victim released: <strong>${d.recovery.victim}</strong> (${d.recovery.released.join(", ")})
     </div>
   `;
+
+  // 7. 5 Algorithm Test Cases
+  document.getElementById("cases-body").innerHTML = (data.test_cases || []).map((c) => `
+    <tr>
+      <td style="font-family:var(--font-mono); font-weight:700;">${c.case_id}</td>
+      <td>${c.title}</td>
+      <td><span class="badge badge-ok">${c.best_algorithm}</span></td>
+      <td style="font-family:var(--font-mono); font-size:12px;">${c.metric_comparison}</td>
+      <td>${c.why}</td>
+    </tr>
+  `).join("");
 }
 
 loadAllKernelData();

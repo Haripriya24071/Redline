@@ -8,7 +8,7 @@
   <a class="keycap-btn keycap-lime" href="{{ url_for('screen_monitor') }}" data-i18n="p1_cta">2. View OS Kernel Behind This →</a>
 </div>
 
-<div class="grid-2" style="margin-bottom:24px; align-items:start;">
+<div class="grid-2" style="margin-bottom:24px; align-items:stretch;">
   <!-- Left: Real-World Patient Intake -->
   <form id="live-dispatch-form" class="glass glass-card">
     <h2 style="margin-top:0; font-size:18px;" data-i18n="p1_form_title">Patient Intake &amp; Priority Dispatch</h2>
@@ -69,12 +69,16 @@
 {% block scripts %}
 <script>
 const PIN_POS = {
-  "HOSP-JAIN": [70, 195],
-  "HOSP-DSH": [145, 165],
-  "HOSP-RRM": [210, 95],
-  "HOSP-BGS": [290, 115],
-  "HOSP-APL": [375, 140],
-  "HOSP-SGR": [395, 65],
+  "HOSP-JAIN": [70, 185],
+  "HOSP-KNG": [42, 220],
+  "HOSP-DSH": [140, 160],
+  "HOSP-RRM": [195, 95],
+  "HOSP-BGS": [265, 115],
+  "HOSP-NAR": [335, 195],
+  "HOSP-MNI": [340, 95],
+  "HOSP-APL": [390, 145],
+  "HOSP-SGR": [385, 55],
+  "HOSP-STJ": [425, 85],
 };
 
 let lastAssignedId = null;

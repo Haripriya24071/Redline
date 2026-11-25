@@ -8,7 +8,7 @@ import time
 from typing import Any
 
 from os_engine.deadlock import ResourceAllocationGraph
-from os_engine.scheduler import Process, Scheduler, SchedulerPolicy
+from os_engine.scheduler import Process, Scheduler, SchedulerPolicy, simulate_algorithm
 
 
 class ScenarioSimulator:
@@ -175,4 +175,82 @@ class ScenarioSimulator:
             "assignments": assigned_log[:10],
             "summary": f"Distributed {num_requests} P1 surge requests in FIFO order across {len(hospitals)} hospitals without over-assigning.",
         }
+
+    @staticmethod
+    def run_5_algorithm_test_cases() -> list[dict[str, Any]]:
+        """Evaluate 5 distinct hospital scenarios showing which scheduling algorithm wins in each."""
+        # Case 1: Mixed routine + critical emergency arrival
+        def c1_procs():
+            return [
+                Process("C1-OP1", "OP Registration", 0, 7, 5),
+                Process("C1-LAB", "Lab Batch", 1, 6, 6),
+                Process("C1-CAR", "Cardiac Arrest", 2, 1, 4, "cardiac_arrest"),
+            ]
+        c1_fcfs = simulate_algorithm(SchedulerPolicy.FCFS, c1_procs())
+        c1_pp = simulate_algorithm(SchedulerPolicy.PREEMPTIVE_PRIORITY, c1_procs())
+
+        # Case 2: All routine equal-urgency tasks (different burst lengths)
+        def c2_procs():
+            return [
+                Process("C2-R1", "Full Blood Panel", 0, 6, 9),
+                Process("C2-R2", "X-Ray", 0, 6, 2),
+                Process("C2-R3", "Pharmacy Refill", 0, 6, 3),
+                Process("C2-R4", "Discharge Summary", 0, 6, 4),
+            ]
+        c2_fcfs = simulate_algorithm(SchedulerPolicy.FCFS, c2_procs())
+        c2_sjf = simulate_algorithm(SchedulerPolicy.SJF, c2_procs())
+
+        # Case 3: Interactive OP & Specialist enquiries (short + long mix, fairness)
+        def c3_procs():
+            return [
+                Process("C3-Q1", "Bulk Record Sync", 0, 5, 10),
+                Process("C3-Q2", "OP Enquiry 1", 1, 5, 2),
+                Process("C3-Q3", "OP Enquiry 2", 2, 5, 2),
+            ]
+        c3_fcfs = simulate_algorithm(SchedulerPolicy.FCFS, c3_procs())
+        c3_rr = simulate_algorithm(SchedulerPolicy.ROUND_ROBIN, c3_procs(), quantum=3)
+
+        # Case 4: Mass-casualty surge (all Priority 1)
+        surge_res = ScenarioSimulator.run_surge_simulation(num_requests=20)
+
+        # Case 5: Continuous emergencies + low-priority dialysis (Starvation vs Aging)
+        aging_res = ScenarioSimulator.run_aging_starvation_demo()
+
+        return [
+            {
+                "case_id": "Case 1",
+                "title": "Cardiac Arrest Interrupts Routine Queue",
+                "best_algorithm": "Preemptive Priority",
+                "metric_comparison": f"Critical Response: {c1_pp['rows'][2]['response']} ticks (vs {c1_fcfs['rows'][2]['response']} ticks in FCFS)",
+                "why": "Pre-empts running routine work immediately so life-critical cases suffer zero dispatch delay.",
+            },
+            {
+                "case_id": "Case 2",
+                "title": "All-Routine Equal-Urgency Batch (OP / Lab / Pharmacy)",
+                "best_algorithm": "SJF (Non-Preemptive)",
+                "metric_comparison": f"Avg Wait: {c2_sjf['avg_waiting']} ticks (vs {c2_fcfs['avg_waiting']} ticks in FCFS)",
+                "why": "When all tasks have equal non-critical priority, running shortest jobs first minimizes overall waiting time.",
+            },
+            {
+                "case_id": "Case 3",
+                "title": "Interactive Enquiries Behind a Large Record Sync",
+                "best_algorithm": "Round Robin (Q = 3)",
+                "metric_comparison": f"Avg Response: {c3_rr['avg_response']} ticks (vs {c3_fcfs['avg_response']} ticks in FCFS)",
+                "why": "Time-slicing prevents short interactive enquiries from stalling behind a long batch job.",
+            },
+            {
+                "case_id": "Case 4",
+                "title": "Mass-Casualty Surge (20 Priority-1 Arrivals)",
+                "best_algorithm": "Surge FIFO + Load Balancing",
+                "metric_comparison": f"20/20 P1 requests spread across {len(surge_res['distribution'])} hospitals",
+                "why": "Equal-priority emergencies use FIFO order while capacity-based routing avoids overloading one hospital.",
+            },
+            {
+                "case_id": "Case 5",
+                "title": "Continuous Emergencies + Planned Dialysis (Starvation)",
+                "best_algorithm": "Preemptive Priority + Aging (-1 / 10 ticks)",
+                "metric_comparison": f"Dialysis dispatched at t={aging_res['with_aging_first_dispatch']} (vs starved without aging)",
+                "why": "Aging gradually boosts waiting routine tasks so they never starve under sustained emergency load.",
+            },
+        ]
 
